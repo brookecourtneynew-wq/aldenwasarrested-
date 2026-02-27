@@ -1,0 +1,1941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DOJ CJIS-NET — D. Mass. Fraud Division</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap');
+
+  :root {
+    --doj-blue: #1a3a5c;
+    --win-bg: #0d1b2a;
+    --taskbar: #0a1520;
+    --taskbar-border: #1e3a5c;
+    --accent-red: #c0392b;
+    --accent-blue: #0067c0;
+    --glass-bg: rgba(18,32,50,0.96);
+    --glass-border: rgba(255,255,255,0.09);
+    --titlebar-active: linear-gradient(to bottom, #1f5799 0%, #144a8c 40%, #0d3e7c 100%);
+    --titlebar-inactive: linear-gradient(to bottom, #3a6ea5 0%, #2e5f94 100%);
+    --doc-bg: #f5f0e8;
+    --doc-text: #1a1a1a;
+    --win-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 4px 16px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06);
+    --win-radius: 6px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Tahoma', Geneva, sans-serif;
+    background: var(--win-bg);
+    height: 100vh; width: 100vw;
+    overflow: hidden;
+    position: relative;
+    cursor: default;
+    user-select: none;
+  }
+
+  /* CRT scanlines */
+  body::after {
+    content: '';
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,0.025) 0px, rgba(0,0,0,0.025) 1px, transparent 1px, transparent 3px);
+    pointer-events: none; z-index: 9999;
+  }
+
+  /* DESKTOP */
+  #desktop {
+    width: 100%; height: calc(100vh - 40px);
+    position: relative;
+    background: 
+      radial-gradient(ellipse at 30% 40%, rgba(26,58,92,0.4) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 70%, rgba(10,30,50,0.5) 0%, transparent 50%),
+      linear-gradient(160deg, #0d1b2a 0%, #0a1420 50%, #060e18 100%);
+    overflow: hidden;
+  }
+
+  /* Subtle DOJ watermark */
+  #desktop::before {
+    content: 'U.S. DEPARTMENT OF JUSTICE';
+    position: absolute; bottom: 60px; right: 40px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px; color: rgba(255,255,255,0.04);
+    letter-spacing: 4px;
+  }
+
+  /* DESKTOP ICONS */
+  .desk-icon {
+    position: absolute;
+    display: flex; flex-direction: column; align-items: center;
+    width: 80px; padding: 6px; cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.1s;
+  }
+  .desk-icon:hover { background: rgba(255,255,255,0.1); }
+  .desk-icon.selected { background: rgba(49,106,197,0.5); outline: 1px dotted rgba(255,255,255,0.5); }
+  .desk-icon .icon-img {
+    font-size: 36px; line-height: 1;
+    margin-bottom: 4px;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
+  }
+  .desk-icon .icon-label {
+    font-size: 11px; color: #fff;
+    text-align: center; line-height: 1.3;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9);
+    word-break: break-word;
+  }
+
+  /* TASKBAR */
+  #taskbar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 40px;
+    background: linear-gradient(to bottom, #245fac 0%, #1a4f9a 6%, #1a4a93 50%, #163f82 94%, #12367a 100%);
+    border-top: 1px solid #3d7cc9;
+    display: flex; align-items: center;
+    z-index: 8000; padding: 0 4px;
+  }
+  #start-btn {
+    background: linear-gradient(to bottom, #5ca030 0%, #3d8c22 6%, #3d8c22 94%, #2a6815 100%);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 3px;
+    color: #fff; font-weight: bold; font-size: 13px;
+    padding: 4px 12px; margin-right: 8px;
+    cursor: pointer; font-family: 'Tahoma', sans-serif;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.5);
+  }
+  #taskbar-divider { width: 1px; height: 28px; background: rgba(255,255,255,0.15); margin: 0 6px; }
+  #taskbar-items { flex: 1; display: flex; gap: 3px; overflow: hidden; }
+  .taskbar-item {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 3px;
+    color: #fff; font-size: 11px; font-family: 'Tahoma', sans-serif;
+    padding: 3px 8px; cursor: pointer;
+    max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    transition: background 0.1s;
+  }
+  .taskbar-item:hover { background: rgba(255,255,255,0.2); }
+  .taskbar-item.active { background: rgba(0,0,0,0.3); border-color: rgba(255,255,255,0.1); }
+  #taskbar-clock {
+    background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 3px; padding: 3px 10px;
+    color: #fff; font-size: 11px; font-family: 'Tahoma', sans-serif;
+    text-align: center; min-width: 80px;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.5);
+  }
+  #taskbar-clock span { display: block; }
+
+  /* CONTEXT MENU */
+  #context-menu {
+    position: fixed; z-index: 9000;
+    background: #f0f0f0;
+    border: 1px solid #888;
+    box-shadow: 3px 3px 6px rgba(0,0,0,0.4);
+    display: none; min-width: 180px;
+    font-size: 12px; font-family: 'Tahoma', sans-serif;
+  }
+  .ctx-item {
+    padding: 5px 20px 5px 28px;
+    cursor: pointer; color: #000;
+    position: relative;
+  }
+  .ctx-item:hover { background: #316ac5; color: #fff; }
+  .ctx-item.disabled { color: #888; cursor: default; }
+  .ctx-item.disabled:hover { background: transparent; color: #888; }
+  .ctx-separator { height: 1px; background: #ccc; margin: 3px 0; }
+  .ctx-icon { position: absolute; left: 6px; top: 5px; font-size: 14px; }
+
+  /* STICKY NOTE */
+  #sticky {
+    position: absolute; top: 180px; right: 80px;
+    width: 160px; min-height: 120px;
+    background: #fef08a;
+    box-shadow: 3px 3px 10px rgba(0,0,0,0.4);
+    padding: 8px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px; color: #333; line-height: 1.6;
+    cursor: move; z-index: 100;
+    transform: rotate(-1.5deg);
+  }
+  #sticky::before {
+    content: ''; display: block; height: 20px; margin: -8px -8px 6px -8px;
+    background: #f5c518;
+  }
+
+  /* WINDOWS */
+  .window {
+    position: fixed;
+    border-radius: var(--win-radius);
+    box-shadow: var(--win-shadow);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 1000;
+    min-width: 300px;
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+  .window.active-window { z-index: 2000; }
+  .window.visible { display: flex; }
+
+  .window-titlebar {
+    background: var(--titlebar-active);
+    padding: 4px 6px;
+    display: flex; align-items: center;
+    cursor: move; flex-shrink: 0;
+    border-bottom: 1px solid rgba(0,0,0,0.3);
+    height: 30px;
+  }
+  .window.inactive .window-titlebar { background: var(--titlebar-inactive); }
+  .titlebar-icon { font-size: 14px; margin-right: 5px; }
+  .titlebar-title {
+    flex: 1; font-size: 11px; font-weight: bold; color: #fff;
+    font-family: 'Tahoma', sans-serif;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.6);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .titlebar-btns { display: flex; gap: 2px; }
+  .titlebar-btn {
+    width: 21px; height: 21px; border-radius: 3px;
+    border: 1px solid rgba(255,255,255,0.3);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 11px; font-weight: bold;
+    font-family: 'Tahoma', sans-serif; color: #fff;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.5);
+  }
+  .btn-min { background: linear-gradient(to bottom, #7fbbe3, #3b96d5); }
+  .btn-max { background: linear-gradient(to bottom, #7fbbe3, #3b96d5); }
+  .btn-close { background: linear-gradient(to bottom, #e87070, #c0392b); }
+  .titlebar-btn:hover { filter: brightness(1.2); }
+  .titlebar-btn:active { filter: brightness(0.9); }
+
+  .window-toolbar {
+    background: #f0f0f0;
+    border-bottom: 1px solid #ccc;
+    padding: 3px 6px;
+    display: flex; align-items: center; gap: 4px;
+    flex-shrink: 0;
+  }
+  .toolbar-btn {
+    background: none; border: 1px solid transparent;
+    padding: 2px 8px; font-size: 11px; font-family: 'Tahoma', sans-serif;
+    cursor: pointer; border-radius: 2px; color: #000;
+  }
+  .toolbar-btn:hover { background: #e5f3ff; border-color: #0066cc; }
+  .toolbar-sep { width: 1px; height: 18px; background: #ccc; margin: 0 3px; }
+
+  .window-addressbar {
+    background: #f0f0f0; padding: 3px 6px;
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; font-family: 'Tahoma', sans-serif;
+    border-bottom: 1px solid #ccc; flex-shrink: 0;
+  }
+  .window-addressbar label { color: #555; }
+  .addressbar-input {
+    flex: 1; border: 1px solid #999; padding: 1px 4px;
+    font-size: 11px; font-family: 'Tahoma', sans-serif;
+    background: #fff; color: #000;
+  }
+
+  .window-body {
+    flex: 1; overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+
+  /* FOLDER WINDOW */
+  .folder-sidebar {
+    width: 160px; flex-shrink: 0;
+    background: #dce6f5;
+    border-right: 1px solid #b0c4de;
+    overflow-y: auto; padding: 8px 0;
+  }
+  .sidebar-section { margin-bottom: 12px; }
+  .sidebar-title {
+    font-size: 11px; font-weight: bold; color: #1a3a5c;
+    padding: 4px 12px; font-family: 'Tahoma', sans-serif;
+    border-bottom: 1px solid #b0c4de; margin-bottom: 4px;
+  }
+  .sidebar-item {
+    padding: 3px 12px; font-size: 11px; cursor: pointer;
+    font-family: 'Tahoma', sans-serif; color: #000;
+  }
+  .sidebar-item:hover { background: rgba(49,106,197,0.2); }
+
+  .folder-content {
+    flex: 1; overflow-y: auto; background: #fff;
+    padding: 12px; display: flex; flex-wrap: wrap;
+    align-content: flex-start; gap: 4px;
+  }
+  .folder-item {
+    display: flex; flex-direction: column; align-items: center;
+    width: 76px; padding: 6px 4px;
+    cursor: pointer; border-radius: 2px;
+    font-size: 11px; font-family: 'Tahoma', sans-serif;
+    color: #000; text-align: center; line-height: 1.3;
+  }
+  .folder-item:hover { background: #e8f0fe; }
+  .folder-item:active, .folder-item.selected { background: #c5d9f1; outline: 1px dotted #316ac5; }
+  .folder-item .fi-icon { font-size: 28px; margin-bottom: 3px; }
+  .folder-item .fi-name { word-break: break-word; }
+
+  .folder-statusbar {
+    background: #f0f0f0; border-top: 1px solid #ccc;
+    padding: 2px 8px; font-size: 11px; color: #555;
+    font-family: 'Tahoma', sans-serif; flex-shrink: 0;
+  }
+
+  /* DOCUMENT VIEWER */
+  .doc-viewer {
+    flex: 1; overflow-y: auto;
+    background: #9a9a9a;
+    padding: 20px;
+    display: flex; flex-direction: column; align-items: center; gap: 20px;
+  }
+  .doc-page {
+    background: #fff;
+    width: 100%; max-width: 680px;
+    padding: 60px 70px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    font-family: 'Times New Roman', serif;
+    font-size: 11pt; color: #000; line-height: 1.6;
+  }
+  .doc-header { text-align: center; margin-bottom: 24px; }
+  .doc-header h1 { font-size: 13pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+  .doc-header h2 { font-size: 11pt; font-weight: bold; }
+  .doc-header .docket { font-size: 10pt; margin-top: 8px; }
+  .doc-stamp {
+    font-family: 'Share Tech Mono', monospace; font-size: 10pt;
+    color: rgba(192,57,43,0.7); transform: rotate(-5deg);
+    border: 2px solid rgba(192,57,43,0.7); display: inline-block;
+    padding: 2px 8px; margin: 8px 0; letter-spacing: 2px;
+  }
+  .doc-section { margin-bottom: 16px; }
+  .doc-section h3 { font-size: 10.5pt; font-weight: bold; text-transform: uppercase; margin-bottom: 6px; border-bottom: 1px solid #333; padding-bottom: 3px; }
+  .doc-section p { margin-bottom: 8px; text-align: justify; }
+  .doc-section ul { margin-left: 20px; margin-bottom: 8px; }
+  .doc-section ul li { margin-bottom: 4px; }
+  .doc-redact {
+    background: #000; color: #000;
+    display: inline-block; min-width: 60px; height: 14px;
+    vertical-align: middle;
+  }
+  .doc-table { width: 100%; border-collapse: collapse; font-size: 9.5pt; margin-bottom: 12px; }
+  .doc-table th { background: #1a3a5c; color: #fff; padding: 4px 8px; font-size: 9pt; }
+  .doc-table td { border: 1px solid #ccc; padding: 3px 8px; vertical-align: top; }
+  .doc-table tr:nth-child(even) td { background: #f5f5f5; }
+  .sig-block { margin-top: 32px; display: flex; justify-content: space-between; }
+  .sig-line { border-top: 1px solid #000; width: 200px; margin-top: 30px; font-size: 9.5pt; padding-top: 4px; }
+  .cert-seal {
+    width: 80px; height: 80px; border-radius: 50%;
+    border: 3px solid #1a3a5c;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9pt; color: #1a3a5c; font-weight: bold;
+    text-align: center; line-height: 1.2; margin: 12px auto;
+    letter-spacing: 0.5px;
+  }
+  .doc-footnote { font-size: 8.5pt; color: #555; border-top: 1px solid #ccc; margin-top: 20px; padding-top: 8px; }
+
+  /* OUTLOOK */
+  .outlook-body { display: flex; flex: 1; overflow: hidden; background: #fff; }
+  .outlook-sidebar {
+    width: 180px; background: #dce6f5; border-right: 1px solid #b0c4de;
+    padding: 8px 0; font-family: 'Tahoma', sans-serif; font-size: 11px;
+    flex-shrink: 0;
+  }
+  .outlook-folder-item {
+    padding: 5px 12px; cursor: pointer; display: flex; align-items: center; gap: 6px;
+    color: #000;
+  }
+  .outlook-folder-item:hover { background: rgba(49,106,197,0.2); }
+  .outlook-folder-item.active { background: #316ac5; color: #fff; }
+  .outlook-list {
+    width: 260px; border-right: 1px solid #b0c4de;
+    background: #fff; overflow-y: auto; flex-shrink: 0;
+  }
+  .outlook-email-item {
+    padding: 8px 10px; border-bottom: 1px solid #eee;
+    cursor: pointer; font-family: 'Tahoma', sans-serif; font-size: 11px;
+  }
+  .outlook-email-item:hover { background: #e8f0fe; }
+  .outlook-email-item.active { background: #c5d9f1; }
+  .outlook-email-item.unread .email-subject { font-weight: bold; }
+  .email-from { color: #555; font-size: 10px; }
+  .email-subject { color: #000; margin: 1px 0; }
+  .email-date { color: #888; font-size: 10px; }
+  .outlook-preview {
+    flex: 1; padding: 16px; overflow-y: auto;
+    font-family: 'Tahoma', sans-serif; font-size: 12px; background: #fff;
+  }
+  .email-header-row { margin-bottom: 4px; font-size: 11px; }
+  .email-header-row span { color: #555; }
+  .email-header-row strong { color: #000; }
+  .email-body-text { margin-top: 16px; line-height: 1.7; color: #111; font-size: 12px; }
+  .email-body-text p { margin-bottom: 10px; }
+  .email-note {
+    background: #fff8dc; border: 1px solid #f0c040;
+    padding: 6px 10px; font-size: 10.5px; color: #666;
+    margin-bottom: 12px; font-style: italic;
+  }
+
+  /* INTERNET EXPLORER */
+  .browser-toolbar {
+    background: #f0f0f0; border-bottom: 1px solid #ccc;
+    display: flex; flex-direction: column; flex-shrink: 0;
+  }
+  .browser-nav {
+    display: flex; align-items: center; gap: 4px;
+    padding: 4px 6px;
+  }
+  .browser-nav-btn {
+    background: none; border: 1px solid transparent; padding: 2px 6px;
+    font-size: 11px; font-family: 'Tahoma', sans-serif; cursor: pointer;
+    border-radius: 2px; color: #333;
+  }
+  .browser-nav-btn:hover { border-color: #0066cc; background: #e5f3ff; }
+  .browser-url {
+    display: flex; align-items: center; gap: 4px;
+    padding: 0 6px 4px 6px;
+  }
+  .browser-url label { font-size: 11px; font-family: 'Tahoma', sans-serif; color: #555; }
+  .browser-url input {
+    flex: 1; border: 2px inset #999; padding: 1px 4px;
+    font-size: 11px; font-family: 'Tahoma', sans-serif; color: #000;
+  }
+  .browser-tabs-bar {
+    display: flex; background: #dce6f5; border-top: 1px solid #ccc;
+    padding: 3px 6px 0 6px; gap: 2px;
+  }
+  .browser-tab {
+    background: #c8d8ec; border: 1px solid #b0c4de; border-bottom: none;
+    padding: 3px 12px; font-size: 11px; font-family: 'Tahoma', sans-serif;
+    cursor: pointer; border-radius: 3px 3px 0 0; color: #333;
+    max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .browser-tab.active { background: #fff; color: #000; font-weight: bold; }
+  .browser-content { flex: 1; overflow-y: auto; background: #fff; }
+  .browser-statusbar {
+    background: #f0f0f0; border-top: 1px solid #ccc;
+    padding: 2px 8px; font-size: 11px; font-family: 'Tahoma', sans-serif;
+    color: #555; flex-shrink: 0; display: flex; align-items: center; gap: 8px;
+  }
+
+  /* Wikipedia styling */
+  .wiki-page { font-family: 'Linux Libertine', 'Georgia', serif; font-size: 13px; color: #202122; padding: 16px 24px; line-height: 1.6; max-width: 900px; margin: 0 auto; }
+  .wiki-page h1 { font-family: 'Linux Libertine', Georgia, serif; font-size: 26px; font-weight: normal; border-bottom: 1px solid #a2a9b1; padding-bottom: 4px; margin-bottom: 12px; }
+  .wiki-page h2 { font-family: 'Linux Libertine', Georgia, serif; font-size: 19px; font-weight: normal; border-bottom: 1px solid #a2a9b1; margin: 20px 0 8px 0; padding-bottom: 4px; }
+  .wiki-page h3 { font-size: 14px; font-weight: bold; margin: 14px 0 6px 0; }
+  .wiki-page p { margin-bottom: 10px; }
+  .wiki-page a { color: #0645ad; text-decoration: none; }
+  .wiki-page a:hover { text-decoration: underline; }
+  .wiki-page a.redlink { color: #ba0000; }
+  .wiki-infobox {
+    float: right; clear: right; margin: 0 0 16px 20px;
+    background: #f8f9fa; border: 1px solid #a2a9b1;
+    font-size: 12px; padding: 8px; width: 260px;
+  }
+  .wiki-infobox caption { font-weight: bold; text-align: center; padding: 4px 0 8px 0; font-size: 13px; }
+  .wiki-infobox th { text-align: right; padding: 3px 6px; color: #555; font-weight: normal; vertical-align: top; }
+  .wiki-infobox td { padding: 3px 6px; }
+  .wiki-reflist { font-size: 11px; column-count: 2; column-gap: 20px; margin-top: 12px; }
+  .wiki-reflist li { margin-bottom: 6px; color: #555; }
+  .wiki-navbox { background: #f8f9fa; border: 1px solid #a2a9b1; margin-top: 20px; padding: 8px; font-size: 11px; }
+  .wiki-talkbox { background: #fef6e4; border: 1px solid #f0c040; padding: 10px 14px; margin-bottom: 16px; font-size: 12px; font-family: 'Tahoma', sans-serif; }
+  .wiki-talkbox h4 { font-size: 13px; margin-bottom: 6px; color: #603000; }
+  .wiki-talkbox p { color: #555; font-size: 11px; }
+  .wiki-talkbox .talk-sig { color: #0645ad; font-size: 11px; margin-top: 4px; }
+
+  /* Fidelity styling */
+  .fidelity-page { font-family: 'Tahoma', sans-serif; font-size: 12px; color: #333; padding: 0; }
+  .fidelity-header { background: #006c38; color: #fff; padding: 12px 20px; display: flex; align-items: center; gap: 12px; }
+  .fidelity-header h1 { font-size: 18px; font-weight: bold; }
+  .fidelity-header .logout { margin-left: auto; font-size: 11px; color: #a8d5b5; cursor: pointer; }
+  .fidelity-header .logout:hover { color: #fff; }
+  .fidelity-nav { background: #004d28; padding: 6px 20px; display: flex; gap: 20px; }
+  .fidelity-nav a { color: #a8d5b5; font-size: 11px; text-decoration: none; cursor: pointer; }
+  .fidelity-nav a:hover { color: #fff; }
+  .fidelity-body { padding: 16px 20px; }
+  .fidelity-section { background: #fff; border: 1px solid #ccc; margin-bottom: 12px; }
+  .fidelity-section-header { background: #e8f0e8; border-bottom: 1px solid #ccc; padding: 6px 12px; font-weight: bold; font-size: 12px; color: #004d28; }
+  .fidelity-section-body { padding: 10px 12px; }
+  .fidelity-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .fidelity-table th { background: #004d28; color: #fff; padding: 5px 8px; text-align: left; font-weight: normal; }
+  .fidelity-table td { border-bottom: 1px solid #eee; padding: 5px 8px; }
+  .fidelity-table tr:hover td { background: #f0f8f0; }
+  .fidelity-big-num { font-size: 22px; font-weight: bold; color: #004d28; }
+  .fidelity-disclaimer { font-size: 10px; color: #888; margin-top: 8px; border-top: 1px solid #eee; padding-top: 8px; }
+
+  /* Stony Island Club */
+  .sic-page {
+    background: #0a1f3d; min-height: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 40px; font-family: 'Garamond', 'Georgia', serif;
+  }
+  .sic-crest { font-size: 48px; margin-bottom: 16px; opacity: 0.6; }
+  .sic-name { color: #e8e0d0; font-size: 28px; letter-spacing: 4px; margin-bottom: 6px; font-weight: normal; }
+  .sic-founded { color: rgba(232,224,208,0.5); font-size: 12px; letter-spacing: 3px; margin-bottom: 40px; font-style: italic; }
+  .sic-divider { width: 80px; height: 1px; background: rgba(232,224,208,0.3); margin: 0 auto 40px auto; }
+  .sic-form { text-align: center; }
+  .sic-label { color: rgba(232,224,208,0.5); font-size: 11px; letter-spacing: 2px; display: block; margin-bottom: 8px; }
+  .sic-input {
+    background: transparent; border: none; border-bottom: 1px solid rgba(232,224,208,0.4);
+    color: #e8e0d0; font-family: 'Garamond', 'Georgia', serif; font-size: 16px;
+    padding: 6px 12px; text-align: center; outline: none;
+    width: 240px; letter-spacing: 3px;
+  }
+  .sic-input::placeholder { color: rgba(232,224,208,0.2); }
+  .sic-enter { 
+    margin-top: 24px; display: block;
+    background: none; border: 1px solid rgba(232,224,208,0.3);
+    color: rgba(232,224,208,0.7); font-family: 'Garamond', Georgia, serif;
+    font-size: 12px; letter-spacing: 3px; padding: 8px 24px;
+    cursor: pointer;
+  }
+  .sic-enter:hover { border-color: rgba(232,224,208,0.6); color: #e8e0d0; }
+  .sic-msg { color: rgba(255,80,80,0.7); font-size: 12px; letter-spacing: 1px; margin-top: 12px; height: 18px; font-style: italic; }
+  .sic-footer { color: rgba(232,224,208,0.2); font-size: 10px; letter-spacing: 2px; margin-top: 60px; }
+
+  /* HARRISON PASSWORD WINDOW */
+  .pwd-window-body {
+    background: #0d1b2a; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 30px; gap: 16px; flex: 1;
+  }
+  .pwd-label { color: #ccc; font-family: 'Share Tech Mono', monospace; font-size: 12px; letter-spacing: 1px; }
+  .pwd-input-row { display: flex; gap: 8px; align-items: center; }
+  .pwd-input {
+    background: #000; border: 1px solid #0067c0; color: #0f0;
+    font-family: 'Share Tech Mono', monospace; font-size: 16px; letter-spacing: 3px;
+    padding: 6px 12px; outline: none; width: 200px;
+  }
+  .pwd-btn {
+    background: #0067c0; border: 1px solid #004a8c; color: #fff;
+    font-family: 'Tahoma', sans-serif; font-size: 11px; padding: 6px 12px; cursor: pointer;
+  }
+  .pwd-btn:hover { background: #0055a5; }
+  .pwd-hint { color: rgba(255,200,100,0.6); font-family: 'Share Tech Mono', monospace; font-size: 11px; }
+  .pwd-error { color: #c0392b; font-family: 'Share Tech Mono', monospace; font-size: 11px; }
+
+  /* RECYCLE BIN */
+  .trash-list { flex: 1; overflow-y: auto; background: #fff; }
+  .trash-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 12px; border-bottom: 1px solid #f0f0f0;
+    cursor: pointer; font-family: 'Tahoma', sans-serif; font-size: 11px;
+  }
+  .trash-item:hover { background: #e8f0fe; }
+  .trash-item .ti-icon { font-size: 18px; flex-shrink: 0; }
+  .trash-item .ti-info { flex: 1; }
+  .trash-item .ti-name { font-weight: bold; color: #000; }
+  .trash-item .ti-meta { color: #888; font-size: 10px; }
+  .trash-item .ti-date { color: #555; font-size: 10px; width: 100px; text-align: right; }
+
+  /* HIDDEN FOLDER */
+  .hidden-folder-body {
+    flex: 1; background: #000; padding: 20px;
+    font-family: 'Share Tech Mono', monospace; font-size: 12px;
+    color: #0f0; overflow-y: auto; line-height: 1.8;
+  }
+  .hidden-folder-body .cmd-line { margin-bottom: 2px; }
+  .hidden-folder-body .file-entry { color: #7f7; }
+  .hidden-folder-body .dir-entry { color: #77f; }
+
+  /* PROPERTIES WINDOW */
+  .props-body {
+    background: #f0f0f0; padding: 16px;
+    font-family: 'Tahoma', sans-serif; font-size: 11px; flex: 1;
+    overflow-y: auto;
+  }
+  .props-row { display: flex; margin-bottom: 8px; }
+  .props-key { color: #555; width: 160px; flex-shrink: 0; }
+  .props-val { color: #000; font-weight: bold; }
+  .props-divider { border: none; border-top: 1px solid #ccc; margin: 10px 0; }
+  .props-warning { color: #888; font-style: italic; font-size: 10.5px; margin-top: 12px; border-top: 1px solid #ddd; padding-top: 8px; }
+</style>
+</head>
+<body>
+
+<!-- DESKTOP -->
+<div id="desktop" ondblclick="deselect()" oncontextmenu="showCtxMenu(event)">
+
+  <!-- Desktop Icons -->
+  <div class="desk-icon" style="left:30px;top:30px" onclick="selectIcon(this)" ondblclick="openWindow('case-folder');event.stopPropagation()">
+    <div class="icon-img">📁</div>
+    <div class="icon-label">USA v. Clarke<br>23-CR-0847</div>
+  </div>
+  <div class="desk-icon" style="left:30px;top:145px" onclick="selectIcon(this)" ondblclick="openWindow('recycle');event.stopPropagation()">
+    <div class="icon-img">🗑️</div>
+    <div class="icon-label">Recycle Bin</div>
+  </div>
+  <div class="desk-icon" style="left:30px;top:255px" onclick="selectIcon(this)" ondblclick="openWindow('harrison');event.stopPropagation()">
+    <div class="icon-img">🔒</div>
+    <div class="icon-label">Harrison Working File</div>
+  </div>
+  <div class="desk-icon" style="left:30px;top:375px" onclick="selectIcon(this)" ondblclick="openWindow('outlook');event.stopPropagation()">
+    <div class="icon-img">📧</div>
+    <div class="icon-label">Outlook</div>
+  </div>
+  <div class="desk-icon" style="left:30px;top:485px" onclick="selectIcon(this)" ondblclick="openWindow('browser');event.stopPropagation()">
+    <div class="icon-img">🌐</div>
+    <div class="icon-label">Internet Explorer</div>
+  </div>
+
+  <!-- Sticky Note -->
+  <div id="sticky" onmousedown="startDrag(event, 'sticky')">
+    <strong>KOWALSKI —</strong><br>
+    call L. Reyes re: Marion interview<br>before 3<br><br>
+    also — ferry records.<br>
+    all of them.
+    <br><br><span style="font-size:9px;color:#888">j.h. 7/27</span>
+  </div>
+
+</div><!-- /desktop -->
+
+<!-- TASKBAR -->
+<div id="taskbar">
+  <button id="start-btn">⊞ Start</button>
+  <div id="taskbar-divider"></div>
+  <div id="taskbar-items"></div>
+  <div id="taskbar-clock">
+    <span id="clock-time">6:03 AM</span>
+    <span id="clock-date">7/28/2023</span>
+  </div>
+</div>
+
+<!-- CONTEXT MENU -->
+<div id="context-menu">
+  <div class="ctx-item" onclick="ctxAction('arrange')"><span class="ctx-icon">↕</span>Arrange Icons By</div>
+  <div class="ctx-separator"></div>
+  <div class="ctx-item" onclick="ctxAction('refresh')"><span class="ctx-icon">↻</span>Refresh</div>
+  <div class="ctx-separator"></div>
+  <div class="ctx-item" onclick="ctxAction('hidden')"><span class="ctx-icon">👁</span>Show Hidden Files</div>
+  <div class="ctx-item" onclick="ctxAction('properties')"><span class="ctx-icon">ℹ</span>Properties</div>
+</div>
+
+<!-- ===== WINDOWS ===== -->
+
+<!-- CASE FOLDER -->
+<div class="window" id="win-case-folder" style="left:120px;top:50px;width:680px;height:480px">
+  <div class="window-titlebar" onmousedown="startDrag(event,'win-case-folder')">
+    <span class="titlebar-icon">📁</span>
+    <span class="titlebar-title">USA v. Clarke (23-CR-0847) — D. Mass. Fraud Division</span>
+    <div class="titlebar-btns">
+      <div class="titlebar-btn btn-min" onclick="minimizeWin('win-case-folder')">—</div>
+      <div class="titlebar-btn btn-max" onclick="toggleMax('win-case-folder')">□</div>
+      <div class="titlebar-btn btn-close" onclick="closeWindow('win-case-folder')">✕</div>
+    </div>
+  </div>
+  <div class="window-toolbar">
+    <button class="toolbar-btn" onclick="navBack('case-folder')">← Back</button>
+    <button class="toolbar-btn" onclick="navForward('case-folder')">Forward →</button>
+    <div class="toolbar-sep"></div>
+    <button class="toolbar-btn">↑ Up</button>
+    <div class="toolbar-sep"></div>
+    <button class="toolbar-btn">🔍 Search</button>
+    <button class="toolbar-btn">📁 Folders</button>
+  </div>
+  <div class="window-addressbar">
+    <label>Address</label>
+    <input class="addressbar-input" id="addr-case-folder" value="C:\DOJ\D_MASS\FRAUD\USA_v_Clarke_23CR0847" readonly>
+  </div>
+  <div class="window-body" style="flex-direction:row">
+    <div class="folder-sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-title">File and Folder Tasks</div>
+        <div class="sidebar-item">📄 Make a new folder</div>
+        <div class="sidebar-item">📤 Publish this folder</div>
+        <div class="sidebar-item">📧 Share this folder</div>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-title">Other Places</div>
+        <div class="sidebar-item" ondblclick="openWindow('case-folder')">📁 D_MASS\FRAUD</div>
+        <div class="sidebar-item">💻 My Computer</div>
+        <div class="sidebar-item">📄 My Documents</div>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-title">Details</div>
+        <div class="sidebar-item" style="color:#555;cursor:default;font-size:10px">USA v. Clarke<br>23-CR-0847<br>D. Mass.<br>FRAUD DIVISION<br><br>AUSA: J. Kowalski<br>Agent: T. Harrison<br>Status: SENTENCED</div>
+      </div>
+    </div>
+    <div class="folder-content" id="fc-case-folder">
+      <!-- populated by JS -->
+    </div>
+  </div>
+  <div class="folder-statusbar" id="sb-case-folder">6 objects</div>
+</div>
+
+<!-- RECYCLE BIN -->
+<div class="window" id="win-recycle" style="left:160px;top:80px;width:700px;height:440px">
+  <div class="window-titlebar" onmousedown="startDrag(event,'win-recycle')">
+    <span class="titlebar-icon">🗑️</span>
+    <span class="titlebar-title">Recycle Bin — Forensic Recovery (8 items)</span>
+    <div class="titlebar-btns">
+      <div class="titlebar-btn btn-min" onclick="minimizeWin('win-recycle')">—</div>
+      <div class="titlebar-btn btn-max" onclick="toggleMax('win-recycle')">□</div>
+      <div class="titlebar-btn btn-close" onclick="closeWindow('win-recycle')">✕</div>
+    </div>
+  </div>
+  <div class="window-toolbar">
+    <button class="toolbar-btn" style="color:#c0392b" onclick="alert('Cannot empty. Evidence hold active. — DOJ/FBI Forensic Unit')">🚫 Empty Recycle Bin</button>
+    <div class="toolbar-sep"></div>
+    <button class="toolbar-btn">📋 Restore all items</button>
+  </div>
+  <div class="window-body">
+    <div class="trash-list" id="trash-list">
+      <!-- populated by JS -->
+    </div>
+  </div>
+  <div class="folder-statusbar">8 objects (forensically recovered) — Original deletion: between 10/14/2022 and 12/01/2022</div>
+</div>
+
+<!-- HARRISON PASSWORD WINDOW -->
+<div class="window" id="win-harrison" style="left:200px;top:120px;width:400px;height:280px">
+  <div class="window-titlebar" onmousedown="startDrag(event,'win-harrison')">
+    <span class="titlebar-icon">🔒</span>
+    <span class="titlebar-title">Harrison Working File — ENCRYPTED</span>
+    <div class="titlebar-btns">
+      <div class="titlebar-btn btn-min" onclick="minimizeWin('win-harrison')">—</div>
+      <div class="titlebar-btn btn-close" onclick="closeWindow('win-harrison')">✕</div>
+    </div>
+  </div>
+  <div class="pwd-window-body" id="harrison-pwd-body">
+    <div class="pwd-label">ENTER DECRYPTION KEY</div>
+    <div class="pwd-hint">hint: harrison's note — "she protected the girl. always the girl."</div>
+    <div class="pwd-input-row">
+      <input class="pwd-input" id="harrison-pwd" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')checkHarrisonPwd()">
+      <button class="pwd-btn" onclick="checkHarrisonPwd()">UNLOCK</button>
+    </div>
+    <div class="pwd-error" id="harrison-err"></div>
+  </div>
+</div>
+
+<!-- HARRISON UNLOCKED FOLDER (hidden until password correct) -->
+<div class="window" id="win-harrison-open" style="left:150px;top:80px;width:700px;height:500px">
+  <div class="window-titlebar" onmousedown="startDrag(event,'win-harrison-open')">
+    <span class="titlebar-icon">🔓</span>
+    <span class="titlebar-title">Harrison Working File — DECRYPTED — Agent T. Harrison, FBI Boston</span>
+    <div class="titlebar-btns">
+      <div class="titlebar-btn btn-min" onclick="minimizeWin('win-harrison-open')">—</div>
+      <div class="titlebar-btn btn-max" onclick="toggleMax('win-harrison-open')">□</div>
+      <div class="titlebar-btn btn-close" onclick="closeWindow('win-harrison-open')">✕</div>
+    </div>
+  </div>
+  <div class="window-body">
+    <div class="folder-content" id="fc-harrison">
+      <!-- populated by JS -->
+    </div>
+  </div>
+  <div class="folder-statusbar">Agent working notes — not for disclosure — Harrison/FBI Boston FY2022-23</div>
+</div>
+
+<!-- OUTLOOK -->
+<div class="window" id="win-outlook" style="left:140px;top:60px;width:760px;height:500px">
+  <div class="window-titlebar" onmousedown="startDrag(event,'win-outlook')">
+    <span class="titlebar-icon">📧</span>
+    <span class="titlebar-title">Microsoft Outlook — j.kowalski@usdoj.gov</span>
+    <div class="titlebar-btns">
+      <div class="titlebar-btn btn-min" onclick="minimizeWin('win-outlook')">—</div>
+      <div class="titlebar-btn btn-max" onclick="toggleMax('win-outlook')">□</div>
+      <div class="titlebar-btn btn-close" onclick="closeWindow('win-outlook')">✕</div>
+    </div>
+  </div>
+  <div class="window-toolbar">
+    <button class="toolbar-btn">📨 New</button>
+    <button class="toolbar-btn">↩ Reply</button>
+    <button class="toolbar-btn">↩↩ Reply All</button>
+    <button class="toolbar-btn">→ Forward</button>
+    <div class="toolbar-sep"></div>
+    <button class="toolbar-btn">🗑 Delete</button>
+    <div class="toolbar-sep"></div>
+    <button class="toolbar-btn">📋 Rules</button>
+  </div>
+  <div class="outlook-body">
+    <div class="outlook-sidebar">
+      <div class="outlook-folder-item active">📥 Inbox (2)</div>
+      <div class="outlook-folder-item">📤 Sent Items</div>
+      <div class="outlook-folder-item" onclick="loadDrafts()">📝 Drafts (1)</div>
+      <div class="outlook-folder-item">🗑 Deleted Items</div>
+      <div class="outlook-folder-item">📁 Case Files</div>
+      <div class="outlook-folder-item">📁 D. Mass. Fraud</div>
+    </div>
+    <div class="outlook-list" id="outlook-list">
+      <!-- populated by JS -->
+    </div>
+    <div class="outlook-preview" id="outlook-preview">
+      <div style="color:#888;font-family:Tahoma,sans-serif;font-size:12px;margin-top:40px;text-align:center">Select a message to read.</div>
+    </div>
+  </div>
+</div>
+
+<!-- INTERNET EXPLORER -->
+<div class="window" id="win-browser" style="left:130px;top:50px;width:820px;height:560px">
+  <div class="window-titlebar" onmousedown="startDrag(event,'win-browser')">
+    <span class="titlebar-icon">🌐</span>
+    <span class="titlebar-title" id="browser-win-title">Internet Explorer</span>
+    <div class="titlebar-btns">
+      <div class="titlebar-btn btn-min" onclick="minimizeWin('win-browser')">—</div>
+      <div class="titlebar-btn btn-max" onclick="toggleMax('win-browser')">□</div>
+      <div class="titlebar-btn btn-close" onclick="closeWindow('win-browser')">✕</div>
+    </div>
+  </div>
+  <div class="browser-toolbar">
+    <div class="browser-nav">
+      <button class="browser-nav-btn">← Back</button>
+      <button class="browser-nav-btn">Forward →</button>
+      <button class="browser-nav-btn">✕ Stop</button>
+      <button class="browser-nav-btn">↻ Refresh</button>
+      <button class="browser-nav-btn">🏠 Home</button>
+    </div>
+    <div class="browser-url">
+      <label>Address:</label>
+      <input id="browser-url-input" value="https://en.wikipedia.org/wiki/Stony_Island_Club">
+      <button class="browser-nav-btn" style="padding:2px 16px;background:#e0e0e0">Go</button>
+    </div>
+    <div class="browser-tabs-bar">
+      <div class="browser-tab active" id="btab-0" onclick="switchBrowserTab(0)">📄 Stony Island Club — Wikipedia</div>
+      <div class="browser-tab" id="btab-1" onclick="switchBrowserTab(1)">💰 NetBenefits — Fidelity</div>
+      <div class="browser-tab" id="btab-2" onclick="switchBrowserTab(2)">🔒 Stony Island Club</div>
+    </div>
+  </div>
+  <div class="browser-content" id="browser-content">
+    <!-- populated by JS -->
+  </div>
+  <div class="browser-statusbar">
+    <span id="browser-status">Done</span>
+    <span style="margin-left:auto">🌐 Internet | Protected Mode: On</span>
+  </div>
+</div>
+
+<!-- DOCUMENT VIEWER -->
+<div class="window" id="win-doc-viewer" style="left:180px;top:60px;width:720px;height:540px">
+  <div class="window-titlebar" onmousedown="startDrag(event,'win-doc-viewer')">
+    <span class="titlebar-icon">📄</span>
+    <span class="titlebar-title" id="doc-viewer-title">Document Viewer</span>
+    <div class="titlebar-btns">
+      <div class="titlebar-btn btn-min" onclick="minimizeWin('win-doc-viewer')">—</div>
+      <div class="titlebar-btn btn-max" onclick="toggleMax('win-doc-viewer')">□</div>
+      <div class="titlebar-btn btn-close" onclick="closeWindow('win-doc-viewer')">✕</div>
+    </div>
+  </div>
+  <div class="window-toolbar">
+    <button class="toolbar-btn">🖨 Print</button>
+    <div class="toolbar-sep"></div>
+    <button class="toolbar-btn">🔍 Find</button>
+    <div class="toolbar-sep"></div>
+    <button class="toolbar-btn" onclick="closeWindow('win-doc-viewer')">✕ Close</button>
+  </div>
+  <div class="window-body">
+    <div class="doc-viewer" id="doc-viewer-body">
+      <!-- populated dynamically -->
+    </div>
+  </div>
+</div>
+
+<!-- HIDDEN FOLDER WINDOW -->
+<div class="window" id="win-hidden" style="left:200px;top:100px;width:600px;height:420px">
+  <div class="window-titlebar" onmousedown="startDrag(event,'win-hidden')">
+    <span class="titlebar-icon">👁</span>
+    <span class="titlebar-title">C:\Users\j.kowalski\.alden — [Hidden Files Visible]</span>
+    <div class="titlebar-btns">
+      <div class="titlebar-btn btn-min" onclick="minimizeWin('win-hidden')">—</div>
+      <div class="titlebar-btn btn-close" onclick="closeWindow('win-hidden')">✕</div>
+    </div>
+  </div>
+  <div class="window-body">
+    <div class="hidden-folder-body" id="hidden-body">
+      <!-- populated by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- PROPERTIES WINDOW -->
+<div class="window" id="win-properties" style="left:250px;top:150px;width:380px;height:380px">
+  <div class="window-titlebar" onmousedown="startDrag(event,'win-properties')">
+    <span class="titlebar-icon">ℹ</span>
+    <span class="titlebar-title">System Properties — CJIS-NET Workstation</span>
+    <div class="titlebar-btns">
+      <div class="titlebar-btn btn-close" onclick="closeWindow('win-properties')">✕</div>
+    </div>
+  </div>
+  <div class="window-body">
+    <div class="props-body">
+      <div class="props-row"><div class="props-key">Machine ID:</div><div class="props-val">CJIS-BOS-0847-FRD</div></div>
+      <div class="props-row"><div class="props-key">Hostname:</div><div class="props-val">BOS-FRAUD-WS04</div></div>
+      <div class="props-row"><div class="props-key">Assigned User:</div><div class="props-val">j.kowalski@usdoj.gov</div></div>
+      <div class="props-row"><div class="props-key">Department:</div><div class="props-val">U.S. Attorney — D. Mass.</div></div>
+      <div class="props-row"><div class="props-key">Division:</div><div class="props-val">Financial Fraud</div></div>
+      <hr class="props-divider">
+      <div class="props-row"><div class="props-key">OS:</div><div class="props-val">Windows XP Professional SP3</div></div>
+      <div class="props-row"><div class="props-key">System Clock:</div><div class="props-val">6:03:47 AM — 07/28/2023</div></div>
+      <div class="props-row"><div class="props-key">Last Login:</div><div class="props-val">07/27/2023 11:58 PM</div></div>
+      <div class="props-row"><div class="props-key">Uptime:</div><div class="props-val">6h 03m 47s</div></div>
+      <div class="props-row"><div class="props-key">Case Ref:</div><div class="props-val">23-CR-0847 / D. Mass.</div></div>
+      <div class="props-row"><div class="props-key">Last File Access:</div><div class="props-val">harrison_notes_FINAL.docx</div></div>
+      <hr class="props-divider">
+      <div class="props-row"><div class="props-key">Network:</div><div class="props-val">DOJ-CJIS-NET (Secure)</div></div>
+      <div class="props-row"><div class="props-key">Last Backup:</div><div class="props-val">07/27/2023 11:00 PM</div></div>
+      <div class="props-warning">This workstation is property of the United States Department of Justice. Unauthorized access is prohibited and subject to federal prosecution. All activity is monitored and logged. — 18 U.S.C. § 1030</div>
+    </div>
+  </div>
+</div>
+
+</body>
+<script>
+// ===== WINDOW MANAGEMENT =====
+let zCounter = 1000;
+let minimized = {};
+let maximized = {};
+let prevGeom = {};
+
+function openWindow(id) {
+  const winId = 'win-' + id;
+  const el = document.getElementById(winId);
+  if (!el) return;
+  el.classList.add('visible');
+  el.style.display = 'flex';
+  bringToFront(winId);
+  addTaskbarItem(winId, id);
+  // Initialize content
+  initWindow(id);
+}
+
+function closeWindow(winId) {
+  const el = document.getElementById(winId);
+  if (!el) return;
+  el.classList.remove('visible');
+  el.style.display = 'none';
+  removeTaskbarItem(winId);
+}
+
+function minimizeWin(winId) {
+  const el = document.getElementById(winId);
+  if (!el) return;
+  el.style.display = 'none';
+  minimized[winId] = true;
+  const tbItem = document.querySelector(`[data-winid="${winId}"]`);
+  if (tbItem) tbItem.classList.remove('active');
+}
+
+function toggleMax(winId) {
+  const el = document.getElementById(winId);
+  if (!el) return;
+  if (maximized[winId]) {
+    // restore
+    const g = prevGeom[winId];
+    if (g) { el.style.left=g.left; el.style.top=g.top; el.style.width=g.width; el.style.height=g.height; }
+    maximized[winId] = false;
+  } else {
+    prevGeom[winId] = {left:el.style.left, top:el.style.top, width:el.style.width, height:el.style.height};
+    el.style.left='0'; el.style.top='0';
+    el.style.width='100vw'; el.style.height='calc(100vh - 40px)';
+    maximized[winId] = true;
+  }
+}
+
+function bringToFront(winId) {
+  zCounter++;
+  document.querySelectorAll('.window').forEach(w => w.classList.remove('active-window'));
+  const el = document.getElementById(winId);
+  if (el) { el.style.zIndex = zCounter; el.classList.add('active-window'); }
+  document.querySelectorAll('.taskbar-item').forEach(t => t.classList.remove('active'));
+  const tbItem = document.querySelector(`[data-winid="${winId}"]`);
+  if (tbItem) tbItem.classList.add('active');
+}
+
+function addTaskbarItem(winId, id) {
+  if (document.querySelector(`[data-winid="${winId}"]`)) {
+    // already exists, just show
+    minimized[winId] = false;
+    document.getElementById(winId).style.display = 'flex';
+    bringToFront(winId);
+    return;
+  }
+  const labels = {
+    'case-folder':'📁 USA v. Clarke',
+    'recycle':'🗑️ Recycle Bin',
+    'harrison':'🔒 Harrison File',
+    'harrison-open':'🔓 Harrison File',
+    'outlook':'📧 Outlook',
+    'browser':'🌐 Internet Explorer',
+    'doc-viewer':'📄 Document',
+    'hidden':'👁 Hidden Files',
+    'properties':'ℹ Properties'
+  };
+  const tb = document.getElementById('taskbar-items');
+  const btn = document.createElement('div');
+  btn.className = 'taskbar-item active';
+  btn.dataset.winid = winId;
+  btn.textContent = labels[id] || id;
+  btn.onclick = () => {
+    if (minimized[winId]) {
+      document.getElementById(winId).style.display = 'flex';
+      minimized[winId] = false;
+      bringToFront(winId);
+    } else if (document.getElementById(winId).classList.contains('active-window')) {
+      minimizeWin(winId);
+    } else {
+      bringToFront(winId);
+    }
+  };
+  tb.appendChild(btn);
+  document.querySelectorAll('.taskbar-item').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function removeTaskbarItem(winId) {
+  const el = document.querySelector(`[data-winid="${winId}"]`);
+  if (el) el.remove();
+}
+
+// ===== DRAGGING =====
+let dragState = null;
+function startDrag(e, elId) {
+  if (e.target.classList.contains('titlebar-btn')) return;
+  const el = document.getElementById(elId);
+  if (!el) return;
+  if (el.id.startsWith('win-')) bringToFront(elId);
+  dragState = {
+    el, startX: e.clientX, startY: e.clientY,
+    origLeft: parseInt(el.style.left)||el.getBoundingClientRect().left,
+    origTop: parseInt(el.style.top)||el.getBoundingClientRect().top
+  };
+  e.preventDefault();
+}
+document.addEventListener('mousemove', e => {
+  if (!dragState) return;
+  const dx = e.clientX - dragState.startX;
+  const dy = e.clientY - dragState.startY;
+  dragState.el.style.left = (dragState.origLeft + dx) + 'px';
+  dragState.el.style.top = Math.max(0, dragState.origTop + dy) + 'px';
+});
+document.addEventListener('mouseup', () => { dragState = null; });
+
+// ===== CONTEXT MENU =====
+document.addEventListener('click', () => { document.getElementById('context-menu').style.display='none'; });
+function showCtxMenu(e) {
+  e.preventDefault();
+  const menu = document.getElementById('context-menu');
+  menu.style.display = 'block';
+  menu.style.left = e.clientX + 'px';
+  menu.style.top = e.clientY + 'px';
+}
+function ctxAction(action) {
+  document.getElementById('context-menu').style.display='none';
+  if (action === 'hidden') { openWindow('hidden'); initHiddenFolder(); }
+  else if (action === 'properties') { openWindow('properties'); }
+  else if (action === 'refresh') {
+    document.body.style.opacity = '0.5';
+    setTimeout(() => { document.body.style.opacity = '1'; }, 300);
+  }
+}
+
+function deselect() {
+  document.querySelectorAll('.desk-icon.selected').forEach(i => i.classList.remove('selected'));
+}
+function selectIcon(el) {
+  deselect();
+  el.classList.add('selected');
+  event.stopPropagation();
+}
+
+// ===== WINDOW INIT =====
+function initWindow(id) {
+  if (id === 'case-folder') initCaseFolder();
+  if (id === 'recycle') initRecycleBin();
+  if (id === 'outlook') initOutlook();
+  if (id === 'browser') initBrowser();
+  if (id === 'harrison-open') initHarrisonOpen();
+}
+
+// ===== FOLDER NAV STACK =====
+let folderStack = { 'case-folder': ['root'] };
+function navBack(folderId) {
+  const stack = folderStack[folderId];
+  if (!stack || stack.length <= 1) return;
+  stack.pop();
+  loadFolder(folderId, stack[stack.length-1]);
+}
+function navForward(folderId) {}
+
+// ===== CASE FOLDER =====
+const folders = {
+  root: {
+    items: [
+      {icon:'📁', name:'Indictment & Charging Docs', type:'folder', target:'indictment-folder'},
+      {icon:'📁', name:'Sentencing Materials', type:'folder', target:'sentencing-folder'},
+      {icon:'📁', name:'FBI Investigation', type:'folder', target:'fbi-folder'},
+      {icon:'📁', name:'Financial Evidence', type:'folder', target:'financial-folder'},
+      {icon:'📁', name:'Correspondence', type:'folder', target:'correspondence-folder'},
+      {icon:'📁', name:'Press & Media', type:'folder', target:'press-folder'},
+    ],
+    path: 'C:\\DOJ\\D_MASS\\FRAUD\\USA_v_Clarke_23CR0847',
+    status: '6 objects'
+  },
+  'indictment-folder': {
+    items: [
+      {icon:'📜', name:'indictment_FINAL.pdf', type:'doc', target:'indictment'},
+      {icon:'📜', name:'superseding_indictment.pdf', type:'doc', target:'superseding'},
+      {icon:'📜', name:'criminal_complaint.pdf', type:'doc', target:'complaint'},
+      {icon:'📋', name:'warrant_Clarke_A.pdf', type:'doc', target:'warrant'},
+    ],
+    path: 'C:\\DOJ\\D_MASS\\FRAUD\\USA_v_Clarke_23CR0847\\Indictment',
+    status: '4 objects'
+  },
+  'sentencing-folder': {
+    items: [
+      {icon:'📜', name:'govt_sentencing_memo.pdf', type:'doc', target:'govt-sentencing'},
+      {icon:'📜', name:'defense_sentencing_memo.pdf', type:'doc', target:'def-sentencing'},
+      {icon:'📋', name:'presentence_report.pdf', type:'doc', target:'psr'},
+      {icon:'📋', name:'judgment_commitment.pdf', type:'doc', target:'judgment'},
+      {icon:'📝', name:'victim_impact_statements.pdf', type:'doc', target:'victim-impact'},
+    ],
+    path: 'C:\\DOJ\\D_MASS\\FRAUD\\USA_v_Clarke_23CR0847\\Sentencing',
+    status: '5 objects'
+  },
+  'fbi-folder': {
+    items: [
+      {icon:'🔍', name:'302_Clarke_A_interview.pdf', type:'doc', target:'302-clarke'},
+      {icon:'🔍', name:'302_Charles_Clarke_interview.pdf', type:'doc', target:'302-charles'},
+      {icon:'🔍', name:'case_summary_Harrison.pdf', type:'doc', target:'fbi-summary'},
+      {icon:'🔍', name:'surveillance_log.pdf', type:'doc', target:'surveillance'},
+      {icon:'📞', name:'voicemail_transcript_10142022.pdf', type:'doc', target:'voicemail'},
+    ],
+    path: 'C:\\DOJ\\D_MASS\\FRAUD\\USA_v_Clarke_23CR0847\\FBI_Investigation',
+    status: '5 objects'
+  },
+  'financial-folder': {
+    items: [
+      {icon:'💰', name:'forensic_accounting_ledger.xlsx', type:'doc', target:'ledger'},
+      {icon:'💰', name:'DAF_account_histories.pdf', type:'doc', target:'daf-history'},
+      {icon:'💰', name:'SPT_Form_990.pdf', type:'doc', target:'form990'},
+      {icon:'💳', name:'credit_card_statements_REDACTED.pdf', type:'doc', target:'cc-statements'},
+      {icon:'🏦', name:'wire_transfer_records.pdf', type:'doc', target:'wire-transfers'},
+    ],
+    path: 'C:\\DOJ\\D_MASS\\FRAUD\\USA_v_Clarke_23CR0847\\Financial_Evidence',
+    status: '5 objects'
+  },
+  'correspondence-folder': {
+    items: [
+      {icon:'✉️', name:'membership_denial_chain.pdf', type:'doc', target:'denial-chain'},
+      {icon:'✉️', name:'SPT_incorporation_docs.pdf', type:'doc', target:'spt-inc'},
+      {icon:'✉️', name:'boathouse_donor_letter.pdf', type:'doc', target:'boathouse-letter'},
+      {icon:'✉️', name:'Holloway_estate_correspondence.pdf', type:'doc', target:'holloway'},
+    ],
+    path: 'C:\\DOJ\\D_MASS\\FRAUD\\USA_v_Clarke_23CR0847\\Correspondence',
+    status: '4 objects'
+  },
+  'press-folder': {
+    items: [
+      {icon:'📰', name:'BostonGlobe_arrest_article.pdf', type:'doc', target:'globe-article'},
+      {icon:'📰', name:'VineyardGazette_boathouse.pdf', type:'doc', target:'gazette'},
+      {icon:'📋', name:'DOJ_press_release.pdf', type:'doc', target:'doj-press'},
+    ],
+    path: 'C:\\DOJ\\D_MASS\\FRAUD\\USA_v_Clarke_23CR0847\\Press',
+    status: '3 objects'
+  }
+};
+
+function initCaseFolder() {
+  if (document.getElementById('fc-case-folder').children.length > 0) return;
+  loadFolder('case-folder', 'root');
+}
+
+function loadFolder(folderId, folderKey) {
+  if (!folderStack[folderId]) folderStack[folderId] = [];
+  if (folderStack[folderId][folderStack[folderId].length-1] !== folderKey) {
+    folderStack[folderId].push(folderKey);
+  }
+  const data = folders[folderKey];
+  if (!data) return;
+  const fc = document.getElementById('fc-' + folderId);
+  if (!fc) return;
+  fc.innerHTML = '';
+  data.items.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'folder-item';
+    el.innerHTML = `<div class="fi-icon">${item.icon}</div><div class="fi-name">${item.name}</div>`;
+    if (item.type === 'folder') {
+      el.ondblclick = () => {
+        loadFolder(folderId, item.target);
+        document.getElementById('addr-' + folderId).value = folders[item.target]?.path || '';
+        document.getElementById('sb-' + folderId).textContent = folders[item.target]?.status || '';
+      };
+    } else if (item.type === 'doc') {
+      el.ondblclick = () => openDoc(item.target);
+    }
+    fc.appendChild(el);
+  });
+  const addr = document.getElementById('addr-' + folderId);
+  const sb = document.getElementById('sb-' + folderId);
+  if (addr) addr.value = data.path;
+  if (sb) sb.textContent = data.status;
+}
+
+// ===== HARRISON FOLDER =====
+function initHarrisonOpen() {
+  const fc = document.getElementById('fc-harrison');
+  if (!fc || fc.children.length > 0) return;
+  const items = [
+    {icon:'📝', name:'harrison_notes_FINAL.docx', target:'harrison-notes'},
+    {icon:'📝', name:'interview_notes_raw.txt', target:'interview-raw'},
+    {icon:'📝', name:'timeline_handwritten.pdf', target:'h-timeline'},
+    {icon:'📞', name:'wiretap_notes.txt', target:'wiretap-notes'},
+    {icon:'🗺️', name:'mapquest_14Acorn.png', target:'mapquest'},
+  ];
+  items.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'folder-item';
+    el.innerHTML = `<div class="fi-icon">${item.icon}</div><div class="fi-name">${item.name}</div>`;
+    el.ondblclick = () => openDoc(item.target);
+    fc.appendChild(el);
+  });
+}
+
+// ===== DOCUMENT OPEN =====
+function openDoc(docId) {
+  const doc = documents[docId];
+  if (!doc) { alert('Document not available. File may be corrupted or under seal.'); return; }
+  const viewer = document.getElementById('win-doc-viewer');
+  document.getElementById('doc-viewer-title').textContent = doc.title;
+  document.getElementById('doc-viewer-body').innerHTML = doc.html;
+  openWindow('doc-viewer');
+}
+
+// ===== RECYCLE BIN =====
+function initRecycleBin() {
+  const list = document.getElementById('trash-list');
+  if (list.children.length > 0) return;
+  const items = [
+    {icon:'📝', name:'dear_lila_draft.txt', orig:'C:\\Users\\a.clarke\\Documents\\Personal', size:'2 KB', date:'Oct 14, 2022', target:'dear-lila'},
+    {icon:'📄', name:'membership_application_DRAFT.docx', orig:'C:\\Users\\a.clarke\\Documents\\Applications', size:'18 KB', date:'Oct 11, 2022', target:'membership-draft'},
+    {icon:'📄', name:'SPT_dissolution_draft.pdf', orig:'C:\\Users\\a.clarke\\Documents\\SPT', size:'34 KB', date:'Nov 29, 2022', target:'spt-dissolution'},
+    {icon:'📧', name:'deleted_email_Holloway_estate.eml', orig:'C:\\Users\\a.clarke\\Outlook\\Deleted', size:'6 KB', date:'Sep 3, 2022', target:'holloway-email'},
+    {icon:'🖼️', name:'ferry_schedule_July2022.png', orig:'C:\\Users\\a.clarke\\Downloads', size:'112 KB', date:'Jul 8, 2022', target:'ferry-schedule'},
+    {icon:'📝', name:'search_history_export.txt', orig:'C:\\Users\\a.clarke\\AppData\\Temp', size:'8 KB', date:'Oct 13, 2022', target:'search-history'},
+    {icon:'🖼️', name:'photo_stony_island_dock.jpg', orig:'C:\\Users\\a.clarke\\Pictures', size:'3.4 MB', date:'Aug 14, 2022', target:'photo-desc'},
+    {icon:'📝', name:'password_hint.txt', orig:'C:\\Users\\a.clarke\\Desktop', size:'1 KB', date:'Oct 1, 2022', target:'pwd-hint'},
+  ];
+  items.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'trash-item';
+    el.innerHTML = `<div class="ti-icon">${item.icon}</div><div class="ti-info"><div class="ti-name">${item.name}</div><div class="ti-meta">Original location: ${item.orig} — ${item.size}</div></div><div class="ti-date">${item.date}</div>`;
+    el.ondblclick = () => openDoc(item.target);
+    list.appendChild(el);
+  });
+}
+
+// ===== OUTLOOK =====
+let currentFolder = 'inbox';
+const emails = [
+  {
+    id: 'e1', folder: 'inbox', unread: false,
+    from: 'T. Harrison <t.harrison@fbi.gov>', subject: 'Re: Clarke — Marion connection — IMPORTANT',
+    date: 'Jul 27, 2023, 10:44 PM', preview: 'Julia — I know it\'s late. Read this before tomorrow.',
+    body: `<div class="email-note">Received: 10:44 PM, July 27, 2023. Agent Thomas Harrison, FBI Boston Field Office.</div>
+<div class="email-header-row"><span>From: </span><strong>t.harrison@fbi.gov</strong></div>
+<div class="email-header-row"><span>To: </span><strong>j.kowalski@usdoj.gov</strong></div>
+<div class="email-header-row"><span>Subject: </span><strong>Re: Clarke — Marion connection — IMPORTANT</strong></div>
+<div class="email-header-row"><span>Date: </span><strong>July 27, 2023 10:44 PM</strong></div>
+<div class="email-body-text">
+<p>Julia —</p>
+<p>I know it's late. But read this before you go in tomorrow.</p>
+<p>I pulled the ferry records today. All of them, going back to summer 1998 like you asked. The Marion family ran the Stony Island crossing for 34 years. Michael Marion, now 42, sold the route in 2009. Currently operates a small restaurant in Menemsha. Catches his own fish. No priors. Not a person of interest.</p>
+<p>What's interesting: Clarke's name appears on passenger manifests going back to that summer. She was 15. She was working dining service at the club. Standard stuff for a kid with her background.</p>
+<p>But — and this is why I'm emailing at 10:44 PM — her credit card records show ferry tickets purchased in July and August of 2022. Last summer. <em>After</em> the SPT incorporation date. After the boathouse donation. After she was already in.</p>
+<p>She wasn't going back for the club. We know when those trips happened — Wednesday afternoons. The club dining doesn't do Wednesday service.</p>
+<p>Menemsha is 20 minutes from the ferry dock.</p>
+<p>I don't know what it means for the case. I don't think it's criminal. But I think it means something. Someone saw her clearly and she ran from it for twenty-five years and then she drove a ferry back toward it after she'd already gotten what she wanted.</p>
+<p>Just thought you should know before you stand up tomorrow and describe her as a woman who only ever wanted one thing.</p>
+<p>Get some sleep.</p>
+<p>— T.H.</p>
+</div>`
+  },
+  {
+    id: 'e2', folder: 'inbox', unread: true,
+    from: 'L. Reyes <l.reyes@usdoj.gov>', subject: 'Sentencing tomorrow — final checklist',
+    date: 'Jul 27, 2023, 9:15 PM', preview: 'Julia, just checking you have everything for tomorrow.',
+    body: `<div class="email-header-row"><span>From: </span><strong>Linda Reyes &lt;l.reyes@usdoj.gov&gt;</strong></div>
+<div class="email-header-row"><span>To: </span><strong>j.kowalski@usdoj.gov</strong></div>
+<div class="email-header-row"><span>Subject: </span><strong>Sentencing tomorrow — final checklist</strong></div>
+<div class="email-header-row"><span>Date: </span><strong>July 27, 2023 9:15 PM</strong></div>
+<div class="email-body-text">
+<p>Julia,</p>
+<p>Just confirming you have everything for 9AM. Courtroom 12, Judge Felson. Defense filed their final sentencing memo this afternoon — I attached it to the case folder if you haven't seen it yet. They're pushing hard on the 18-month argument. You'll want to have a response ready.</p>
+<p>One thing: the defense memo mentions the daughter. Age eight. Living with the Lila's godmother in Cambridge. It'll come up. Felson is a parent. Just be ready.</p>
+<p>The victim impact statements from the Holloway estate executor are in the folder. They're thin — she's essentially deceased property — but they're technically required and you should reference them.</p>
+<p>See you at 8:30.</p>
+<p>— Linda</p>
+<p style="font-size:10px;color:#888;margin-top:16px">P.S. The defense attorney is good. Don't let the cufflinks throw you.</p>
+</div>`
+  },
+  {
+    id: 'e3', folder: 'drafts', unread: false,
+    from: 'j.kowalski@usdoj.gov (UNSENT)', subject: '[DRAFT] 4:12 AM',
+    date: 'Jul 28, 2023, 4:12 AM', preview: 'unsent. drafted 4:12 AM.',
+    body: `<div class="email-note">⚠ UNSENT DRAFT — Saved automatically 4:12 AM, July 28, 2023. Recipient field: blank.</div>
+<div class="email-header-row"><span>From: </span><strong>j.kowalski@usdoj.gov</strong></div>
+<div class="email-header-row"><span>To: </span><strong>[no recipient]</strong></div>
+<div class="email-header-row"><span>Subject: </span><strong>[blank]</strong></div>
+<div class="email-header-row"><span>Date: </span><strong>July 28, 2023 4:12 AM</strong></div>
+<div class="email-body-text">
+<p>I'm asking for 28 months. I'm going to stand up in four hours and ask for 28 months.</p>
+<p>She stole $1.7 million. She forged federal forms. She ran a fake nonprofit for two years. The statutes are clear and the guidelines are clear and she knew exactly what she was doing and I'm going to stand up and say all of that.</p>
+<p>But.</p>
+<p>I've been sitting here since 2 AM going through the credit card statements again. Not the ones we used in the indictment. The personal ones. The ones that weren't relevant to the case but we pulled anyway.</p>
+<p>Pottery supplies. October 2022. $47. A place called Keyes Clay in Falmouth. Her mother's studio, probably. I looked it up.</p>
+<p>A picture book for a child. $14. An ice cream place in Woods Hole. $9.</p>
+<p>She spent more money on those things than she did on a specific charity lunch I know you're going to flag if you read this.</p>
+<p>She was building something fake with her left hand and holding something real with her right and the real thing was the part she kept quiet about. The real thing never made it into the indictment because the real thing was never the crime.</p>
+<p>I know she's guilty. I know what the law says. I know the guidelines and I know what I'm going to say in 4 hours and I know she has to go.</p>
+<p>I just —</p>
+<p>I don't know what she wanted. I thought I did. I've prosecuted 23 white collar cases and I always know what they wanted. Money or power or fear. Simple. I can explain it in a sentencing memo. I can explain it to a jury. I can make it make sense.</p>
+<p>I can't make this make sense. And I have to stand up in 4 hours and make it make sense.</p>
+<p>Okay. Going to try to sleep.</p>
+<p style="color:#888;font-style:italic;font-size:10.5px;margin-top:16px">[not sent. 4:12 AM. july 28.]</p>
+</div>`
+  }
+];
+
+let activeEmailId = null;
+function initOutlook() {
+  renderOutlookList('inbox');
+}
+function renderOutlookList(folder) {
+  currentFolder = folder;
+  const list = document.getElementById('outlook-list');
+  list.innerHTML = '';
+  emails.filter(e => e.folder === folder).forEach(email => {
+    const el = document.createElement('div');
+    el.className = 'outlook-email-item' + (email.unread ? ' unread' : '') + (activeEmailId===email.id?' active':'');
+    el.innerHTML = `<div class="email-from">${email.from.split('<')[0].trim()}</div><div class="email-subject">${email.subject}</div><div class="email-date">${email.date}</div>`;
+    el.onclick = () => {
+      document.querySelectorAll('.outlook-email-item').forEach(i=>i.classList.remove('active'));
+      el.classList.add('active'); el.classList.remove('unread');
+      email.unread = false;
+      activeEmailId = email.id;
+      document.getElementById('outlook-preview').innerHTML = email.body;
+    };
+    list.appendChild(el);
+  });
+}
+function loadDrafts() {
+  document.querySelectorAll('.outlook-folder-item').forEach(i=>i.classList.remove('active'));
+  event.target.classList.add('active');
+  renderOutlookList('drafts');
+}
+
+// ===== BROWSER =====
+let activeBrowserTab = 0;
+const browserTabs = [
+  {
+    url: 'https://en.wikipedia.org/wiki/Stony_Island_Club',
+    title: '📄 Stony Island Club — Wikipedia, the free encyclopedia',
+    html: `<div class="wiki-page">
+<div class="wiki-talkbox"><h4>⚠ Talk page notice</h4><p>This article has been flagged for potential conflicts of interest. One or more editors may have a connection to the subject. <a href="#">See Talk:Stony_Island_Club</a> for ongoing dispute. </p><p class="talk-sig">Flagged by <a href="#">Verdana_Edits</a> | Last discussed: <a class="redlink" href="#">USA v. Clarke</a> (red link — article not yet created)</p></div>
+<h1>Stony Island Club</h1>
+<table class="wiki-infobox"><caption>Stony Island Club</caption><tr><th>Founded</th><td>1891</td></tr><tr><th>Location</th><td>Stony Island, Massachusetts (private)</td></tr><tr><th>Access</th><td>Ferry from Vineyard Haven, 15 min.</td></tr><tr><th>Type</th><td>Private social and recreational club</td></tr><tr><th>Membership</th><td>~340 family memberships (est.)</td></tr><tr><th>Ferry operator</th><td>Marion Family Transport (1889–2009); Vineyard Transit Co. (2009–present)</td></tr><tr><th>Website</th><td><em>[private, members only]</em></td></tr></table>
+<p>The <b>Stony Island Club</b> is a private social and recreational club established in 1891 on Stony Island, a 300-acre private island located approximately 15 minutes by ferry from Vineyard Haven, Massachusetts. The club is widely considered among the most exclusive private membership organizations in New England.</p>
+<p>Membership is hereditary in the majority of cases and limited to approximately 340 family memberships. The club does not advertise, does not maintain a public website, and does not disclose the names of its members or membership criteria.</p>
+<h2>History</h2>
+<p>The club was founded in 1891 by a consortium of Boston families including the Shaws, Forbeses, and Holloways, who sought a summer retreat inaccessible to the expanding resort development of the Vineyard and Nantucket. A 300-acre parcel was acquired by private treaty and the original <i>Stony Island House</i> was constructed between 1891 and 1893.</p>
+<p>By 1920, the club had established the characteristic aesthetic that would define it through the following century: no automobiles (golf carts and bicycles only), a single casual dining room serving local seafood, and a culture described by members as "not rustic, not formal — simply old." Buildings are maintained in a state that preserves their age rather than concealing it.</p>
+<h2>Notable buildings</h2>
+<p>The <b>Marion Boathouse</b>, named for the Marion family who operated the island ferry for three generations, was restored in 2022 following a $300,000 anonymous donation through the <a href="#">Seaside Preservation Trust</a>. The boathouse is considered an architectural landmark and houses the club's historic fleet of wooden sailboats.</p>
+<p style="font-size:11px;color:#555;font-style:italic">The Seaside Preservation Trust was later <a class="redlink" href="#">alleged to be a fraudulent nonprofit</a> in federal criminal proceedings. [<a href="#">citation needed</a>]</p>
+<h2>Membership</h2>
+<p>Membership applications require sponsorship by two current members of no fewer than ten years' standing. Applications are reviewed annually by a committee whose composition is not publicly disclosed. The average wait time for non-hereditary applicants is estimated at twelve to fifteen years, though the club disputes this characterization.</p>
+<p>In 2022, a membership denial email chain was entered into evidence in <a class="redlink" href="#">United States v. Clarke, No. 23-CR-0847 (D. Mass.)</a>, revealing that the club's membership committee was aware of a pending application from Alden Clarke at the time the Seaside Preservation Trust donation was processed.</p>
+<h2>The Marion family</h2>
+<p>The Marion family operated the Stony Island ferry crossing from 1889 until 2009, when the route was sold to Vineyard Transit Co. The family is commemorated in the Marion Boathouse. Current family members include Michael Marion (b. 1981), who operates a seafood restaurant in Menemsha, Massachusetts.</p>
+<h2>References</h2>
+<div class="wiki-reflist"><ol><li><i>New England Private Clubs</i>, Harvard University Press, 1994.</li><li>Shaw, Arabella. <i>A Hundred Years on the Island</i>. Privately printed, 2001.</li><li>Boston Globe, July 28, 2023. "Beacon Hill Woman Sentenced in Club Fraud."</li><li>Vineyard Gazette, September 2022. "Marion Boathouse Restoration Complete."</li><li>United States v. Clarke, 23-CR-0847 (D. Mass. 2023).</li></ol></div>
+</div>`
+  },
+  {
+    url: 'https://nb.fidelity.com/public/nb/tsp/home',
+    title: '💰 NetBenefits — Fidelity — TSP Overview',
+    html: `<div class="fidelity-page">
+<div class="fidelity-header"><h1>NetBenefits</h1><span style="font-size:11px;color:#a8d5b5">by Fidelity</span><div class="logout">J. Kowalski — <a style="color:#a8d5b5;cursor:pointer">Log Out</a></div></div>
+<div class="fidelity-nav"><a>Accounts</a><a>Investments</a><a>Planning</a><a>Beneficiaries</a><a>Tools</a><a>Messages (2)</a></div>
+<div class="fidelity-body">
+<div style="font-size:12px;color:#555;margin-bottom:12px">Last login: July 27, 2023, 11:59 PM — Boston, MA</div>
+<div class="fidelity-section"><div class="fidelity-section-header">Account Summary — Julia A. Kowalski, AUSA</div>
+<div class="fidelity-section-body">
+<div style="display:flex;gap:30px;align-items:flex-start">
+<div><div style="font-size:11px;color:#555;margin-bottom:4px">Total Balance (TSP Federal Plan)</div><div class="fidelity-big-num">$47,203.88</div><div style="font-size:10px;color:#888">As of market close July 27, 2023</div></div>
+<div style="border-left:1px solid #ccc;padding-left:20px">
+<div style="font-size:11px;color:#555;margin-bottom:6px">YTD Contributions: <strong>$3,200.00</strong></div>
+<div style="font-size:11px;color:#555;margin-bottom:6px">Employer Match (FERS): <strong>$960.00</strong></div>
+<div style="font-size:11px;color:#555">Vested: <strong>100%</strong></div>
+</div>
+</div>
+</div></div>
+<div class="fidelity-section"><div class="fidelity-section-header">Holdings</div>
+<div class="fidelity-section-body">
+<table class="fidelity-table"><tr><th>Fund</th><th>Shares</th><th>Price</th><th>Value</th><th>Allocation</th></tr>
+<tr><td>G Fund (Govt Securities)</td><td>1,840.22</td><td>$16.74</td><td>$30,801.28</td><td>65.2%</td></tr>
+<tr><td>C Fund (S&P 500 Index)</td><td>112.4</td><td>$68.15</td><td>$7,660.06</td><td>16.2%</td></tr>
+<tr><td>F Fund (Bond Index)</td><td>290.1</td><td>$18.44</td><td>$5,347.44</td><td>11.3%</td></tr>
+<tr><td>S Fund (Small/Mid Cap)</td><td>88.4</td><td>$38.36</td><td>$3,391.10</td><td>7.2%</td></tr>
+</table>
+<div class="fidelity-disclaimer">TSP values are approximate. Federal government employees are eligible for the Thrift Savings Plan (TSP) through FERS. Kowalski, Julia A. — GS-13 Step 4 — AUSA D. Mass. — Employee since 2016. Annual salary: $142,300.</div>
+</div></div>
+
+<div style="background:#fff8e1;border:1px solid #f0c040;padding:10px 14px;font-size:11px;color:#603000;margin-top:16px">
+<strong>For reference:</strong> The defendant in USA v. Clarke, 23-CR-0847, held the following at time of arrest: personal investment accounts $847,200 (Vanguard); retirement accounts $412,000 (Fidelity); real estate equity $840,000 (14 Acorn Street, Boston). Total disclosed assets: approximately <strong>$2,099,200</strong>.<br><br>
+<em>Note: this tab was open on the workstation at time of the desk audit. — T. Harrison</em>
+</div>
+</div></div>`
+  },
+  {
+    url: 'https://www.stonyislandclub.com/members',
+    title: '🔒 Stony Island Club — Member Portal',
+    html: `<div class="sic-page">
+<div class="sic-crest">⚓</div>
+<div class="sic-name">STONY ISLAND CLUB</div>
+<div class="sic-founded">EST. 1891 · MEMBERS ONLY</div>
+<div class="sic-divider"></div>
+<div class="sic-form">
+<label class="sic-label">ACCESS CODE</label>
+<input class="sic-input" id="sic-pwd-input" type="password" placeholder="· · · · · · · ·" onkeydown="if(event.key==='Enter')checkSICPwd()">
+<button class="sic-enter" onclick="checkSICPwd()">ENTER</button>
+<div class="sic-msg" id="sic-pwd-msg"></div>
+</div>
+<div class="sic-footer">VINEYARD HAVEN FERRY · WEDNESDAY SERVICE SUSPENDED</div>
+</div>`
+  }
+];
+
+function initBrowser() {
+  switchBrowserTab(0);
+}
+
+function switchBrowserTab(idx) {
+  activeBrowserTab = idx;
+  document.querySelectorAll('.browser-tab').forEach((t,i) => t.classList.toggle('active', i===idx));
+  const tab = browserTabs[idx];
+  document.getElementById('browser-content').innerHTML = tab.html;
+  document.getElementById('browser-url-input').value = tab.url;
+  document.getElementById('browser-win-title').textContent = tab.title.replace(/^[🌐📄💰🔒]\s*/,'') + ' — Internet Explorer';
+  document.getElementById('browser-status').textContent = 'Done';
+}
+
+function checkSICPwd() {
+  const val = document.getElementById('sic-pwd-input').value;
+  const msg = document.getElementById('sic-pwd-msg');
+  if (!val) return;
+  msg.style.color = 'rgba(255,80,80,0.7)';
+  msg.textContent = 'Access denied.';
+  document.getElementById('sic-pwd-input').value = '';
+  setTimeout(() => { msg.textContent = ''; }, 2500);
+}
+
+// ===== HARRISON PASSWORD =====
+function checkHarrisonPwd() {
+  const val = document.getElementById('harrison-pwd').value.toUpperCase().trim();
+  const err = document.getElementById('harrison-err');
+  if (val === 'LILA') {
+    closeWindow('win-harrison');
+    openWindow('harrison-open');
+  } else {
+    err.textContent = 'Incorrect key. Access denied.';
+    document.getElementById('harrison-pwd').value = '';
+    setTimeout(() => { err.textContent = ''; }, 2500);
+  }
+}
+
+// ===== HIDDEN FOLDER =====
+function initHiddenFolder() {
+  const body = document.getElementById('hidden-body');
+  if (body.children.length > 0) return;
+  const lines = [
+    `<span style="color:#0f0">C:\\Users\\j.kowalski&gt;</span> dir .alden /a:h`,
+    ``,
+    ` Volume in drive C has no label.`,
+    ` Volume Serial Number is DOJ-BOS-04`,
+    ``,
+    ` Directory of C:\\Users\\j.kowalski\\.alden`,
+    ``,
+    `07/28/2023  06:02 AM    &lt;DIR&gt;          .`,
+    `07/28/2023  06:02 AM    &lt;DIR&gt;          ..`,
+    `10/14/2022  11:58 PM             1,247 <span class="file-entry">first_line.txt</span>`,
+    `10/14/2022  11:58 PM               342 <span class="file-entry">readme.txt</span>`,
+    `               2 File(s)          1,589 bytes`,
+    `               2 Dir(s)  47,203,847,680 bytes free`,
+    ``,
+    `<span style="color:#0f0">C:\\Users\\j.kowalski&gt;</span> type .alden\\first_line.txt`,
+    ``,
+    `<span style="color:#fff;font-style:italic">The arrest came at 6:04 AM, just after Alden Clarke had finished</span>`,
+    `<span style="color:#fff;font-style:italic">her first cup of coffee.</span>`,
+    ``,
+    `<span style="color:#0f0">C:\\Users\\j.kowalski&gt;</span> type .alden\\readme.txt`,
+    ``,
+    `<span style="color:#aaa">She is real.</span>`,
+    `<span style="color:#aaa">Read the rest.</span>`,
+    ``,
+    `<span style="color:#0f0">C:\\Users\\j.kowalski&gt;</span> <span style="animation:blink 1s infinite">█</span>`,
+  ];
+  let delay = 0;
+  lines.forEach((line, i) => {
+    setTimeout(() => {
+      const div = document.createElement('div');
+      div.className = 'cmd-line';
+      div.innerHTML = line || '&nbsp;';
+      body.appendChild(div);
+      body.scrollTop = body.scrollHeight;
+    }, delay);
+    delay += line === '' ? 40 : 80;
+  });
+}
+
+// ===== DOCUMENTS =====
+const documents = {
+  'indictment': {
+    title: 'indictment_FINAL.pdf — USA v. Clarke, 23-CR-0847',
+    html: `<div class="doc-page">
+<div class="doc-header">
+<div class="cert-seal">U.S.<br>DOJ<br>D.MASS</div>
+<h1>United States District Court<br>District of Massachusetts</h1>
+<div class="docket">Case No. 23-CR-0847</div>
+<div style="margin:12px 0"><div class="doc-stamp">FILED</div></div>
+<h2>INDICTMENT</h2>
+<p style="margin-top:8px">UNITED STATES OF AMERICA, Plaintiff,<br>v.<br><strong>ALDEN WEXLEY CLARKE</strong>, Defendant.</p>
+</div>
+<div class="doc-section">
+<h3>The Grand Jury Charges:</h3>
+<p>At all times relevant to this Indictment, Defendant ALDEN WEXLEY CLARKE ("Clarke") was a resident of Boston, Massachusetts, and was employed as Director of Donor Relations at Dunmore Capital Management, LLC, a registered investment advisor located at 88 Federal Street, Boston, Massachusetts.</p>
+</div>
+<div class="doc-section">
+<h3>Count One: Wire Fraud — 18 U.S.C. § 1343</h3>
+<p>From on or about September 2020 through on or about November 2022, in the District of Massachusetts and elsewhere, Clarke, having devised a scheme to defraud and to obtain money by means of false and fraudulent pretenses, did transmit or cause to be transmitted by means of wire communication in interstate commerce, writings, signals, and sounds for the purpose of executing such scheme.</p>
+<p><strong>Object of the Scheme:</strong> Clarke caused the unauthorized transfer of funds from dormant donor-advised fund ("DAF") accounts held at Dunmore Capital Management to a shell nonprofit organization, the Seaside Preservation Trust (the "SPT"), which Clarke had incorporated and controlled for the purpose of obtaining social club membership.</p>
+</div>
+<div class="doc-section">
+<h3>Overt Acts</h3>
+<p>In furtherance of the scheme, Clarke committed the following overt acts, among others:</p>
+<ul>
+<li><strong>September 2020:</strong> Clarke identified 14 dormant DAF accounts with no responsive donors or heirs, totaling approximately $4.2 million in dormant funds.</li>
+<li><strong>November 2020:</strong> Clarke incorporated the Seaside Preservation Trust under Massachusetts law, listing herself as registered agent under a fictitious name.</li>
+<li><strong>January 2021 – October 2022:</strong> Clarke caused 47 unauthorized wire transfers from dormant DAF accounts to SPT accounts, totaling $1,723,400.</li>
+<li><strong>October 2021:</strong> Clarke caused SPT to issue a $300,000 grant for restoration of the Marion Boathouse at Stony Island Club.</li>
+<li><strong>December 2021:</strong> Clarke submitted a membership application to the Stony Island Club, sponsored by two members she had met through her donor relations work.</li>
+<li><strong>March 2022:</strong> Clarke received written notice of membership approval from the Stony Island Club.</li>
+<li><strong>October 14, 2022:</strong> An anonymous tip was received by the FBI Boston Field Office regarding irregularities in Dunmore Capital DAF distributions.</li>
+</ul>
+</div>
+<div class="doc-section">
+<h3>Count Two: Money Laundering — 18 U.S.C. § 1956</h3>
+<p>Clarke conducted financial transactions knowing that the property involved represented the proceeds of specified unlawful activity, with the intent to conceal or disguise the nature, location, source, ownership, or control of the proceeds.</p>
+</div>
+<div class="doc-section">
+<h3>Forfeiture Allegation</h3>
+<p>Upon conviction, the defendant shall forfeit all property constituting or derived from proceeds of the offenses alleged herein, including but not limited to: approximately $1,723,400 in wire transfer proceeds; membership fees paid to the Stony Island Club; and all assets traceable to such proceeds.</p>
+</div>
+<div class="sig-block">
+<div><div class="sig-line">JULIA A. KOWALSKI<br>Assistant United States Attorney<br>District of Massachusetts</div></div>
+<div><div class="sig-line">Foreperson, Grand Jury<br>District of Massachusetts</div></div>
+</div>
+<div class="doc-footnote">This document is a federal indictment filed in the United States District Court for the District of Massachusetts. An indictment is not evidence of guilt. The defendant is presumed innocent until proven guilty beyond a reasonable doubt.</div>
+</div>`
+  },
+
+  'fbi-summary': {
+    title: 'case_summary_Harrison.pdf — Agent T. Harrison, FBI Boston',
+    html: `<div class="doc-page">
+<div class="doc-header">
+<h1>Federal Bureau of Investigation<br>Boston Field Office</h1>
+<div class="docket">Case File: 23-CR-0847 | Agent: Thomas B. Harrison</div>
+<div style="margin:8px 0"><div class="doc-stamp">FOR OFFICIAL USE ONLY</div></div>
+<h2>Investigative Case Summary</h2>
+</div>
+<div class="doc-section">
+<h3>I. Subject</h3>
+<p>ALDEN WEXLEY CLARKE, DOB: <span class="doc-redact"></span>, Female. Boston, MA. Director of Donor Relations, Dunmore Capital Management. Married (separated at time of arrest) to CHARLES HENRY CLARKE. One minor child, female, age 8.</p>
+</div>
+<div class="doc-section">
+<h3>II. Summary of Investigation</h3>
+<p>This investigation originated from an anonymous tip received October 14, 2022, alleging irregularities in donor-advised fund ("DAF") distributions at Dunmore Capital Management. The tip included specific account numbers and transaction dates, suggesting insider knowledge. The identity of the tipster has not been established.</p>
+<p>Initial review confirmed 47 unauthorized transfers over a 26-month period. Financial forensics identified the Seaside Preservation Trust ("SPT") as the sole recipient of unauthorized funds. SPT was incorporated November 2020 by a registered agent subsequently identified as the subject.</p>
+<p>A search warrant for subject's residence at 14 Acorn Street, Boston, was executed July 28, 2023 at 6:04 AM without incident. Subject was cooperative and did not resist arrest.</p>
+</div>
+<div class="doc-section">
+<h3>III. Notes — Menemsha Connection</h3>
+<p>Credit card analysis revealed subject purchased Stony Island ferry tickets on 9 occasions between July and August 2022 — <em>after</em> club membership had been granted in March 2022. Wednesday departures, 11:00 AM. Return ferry not purchased on 7 of 9 occasions, suggesting overnight.</p>
+<p>Menemsha, MV is located 20–25 minutes by car from the Vineyard Haven ferry dock. Subject had no known connections to Menemsha other than: MICHAEL T. MARION, DOB: <span class="doc-redact"></span>, Male. Menemsha, MA. Owner/operator, Marion's Catch (seafood restaurant). No criminal history. Not a person of interest.</p>
+<p>Subject and Marion were identified on Stony Island Club staff rosters for summer 1998. Subject was 15; Marion was 16. <em>Note: this connection predates the SPT scheme by approximately 22 years and does not appear to have evidentiary value. Included for completeness.</em></p>
+<p>The voicemail intercepted October 14, 2022 (see exhibit 14-C) contains the following passage which this agent flagged for prosecutorial review: <em>"I know what this looks like. I know. But I need you to understand — I sent her to her grandmother's first. Before I made the call. I needed her out of the house. I wanted her out of the house before anything happened."</em></p>
+<p>Harrison's note: <strong>She sent the child away before she made the call. She knew.</strong></p>
+</div>
+<div class="doc-section">
+<h3>IV. Cooperating Witnesses</h3>
+<p>Charles Clarke (estranged husband) agreed to proffer. His statement contained no material information; he stated he was unaware of the SPT and described his wife as "very private about her professional activities." He filed for divorce <span class="doc-redact"></span> days after her arrest.</p>
+</div>
+<div class="sig-block">
+<div><div class="sig-line">Thomas B. Harrison<br>Special Agent, FBI Boston<br>Financial Crimes Unit</div></div>
+</div>
+</div>`
+  },
+
+  'govt-sentencing': {
+    title: 'govt_sentencing_memo.pdf — AUSA Kowalski',
+    html: `<div class="doc-page">
+<div class="doc-header">
+<h1>United States District Court<br>District of Massachusetts</h1>
+<div class="docket">23-CR-0847-FDS</div>
+<h2>GOVERNMENT'S SENTENCING MEMORANDUM</h2>
+<p style="margin-top:8px">United States of America<br>v.<br><strong>Alden Wexley Clarke</strong></p>
+</div>
+<div class="doc-section">
+<h3>Introduction</h3>
+<p>The United States respectfully submits this memorandum in advance of sentencing. The Government recommends a term of imprisonment of 28 months, to be followed by three years of supervised release, restitution of $1,723,400, and forfeiture of all assets derived from the offense.</p>
+</div>
+<div class="doc-section">
+<h3>Nature and Circumstances of the Offense</h3>
+<p>This was not a crime of necessity. The defendant had a law degree, a six-figure income, and no credible claim of financial desperation. She committed this offense with deliberation over a period of 26 months, using her professional access to exploit accounts belonging to deceased and elderly donors who could not object.</p>
+<p>The offense was sophisticated. The defendant created a shell nonprofit, forged grant recommendation forms, and structured transfers in amounts designed to avoid triggering internal compliance alerts. She donated 30% of proceeds to legitimate charities — not out of generosity, but to build a paper trail that would survive scrutiny.</p>
+<p>The objective was membership in a private social club. The Government does not suggest this objective was sinister. It suggests it was disproportionate, and that the defendant was prepared to commit federal fraud in order to achieve it.</p>
+</div>
+<div class="doc-section">
+<h3>The Sentencing Guidelines</h3>
+<p>The Presentence Report calculates a total offense level of 22 and a criminal history category of I, yielding an advisory Guidelines range of 41–51 months. The Government is requesting a downward variance to 28 months based on the defendant's complete acceptance of responsibility, her cooperation with financial forensics, and the absence of direct harm to individual identified victims.</p>
+</div>
+<div class="doc-section">
+<h3>The Defendant's Personal History</h3>
+<p>The Government acknowledges that the defendant grew up in modest circumstances, earned her law degree through scholarship, and has no prior criminal history. The Government further acknowledges that she has a minor child, age 8, who will be significantly affected by her incarceration.</p>
+<p>These facts are not irrelevant. They are also not, in the Government's view, a basis for avoiding imprisonment. Many defendants have children. Many defendants grew up poor. The question is whether the defendant's conduct warrants incarceration — and it does.</p>
+</div>
+<div class="sig-block">
+<div><div class="sig-line">Julia A. Kowalski<br>Assistant United States Attorney<br>District of Massachusetts</div></div>
+</div>
+</div>`
+  },
+
+  'def-sentencing': {
+    title: 'defense_sentencing_memo.pdf — Defense Counsel',
+    html: `<div class="doc-page">
+<div class="doc-header">
+<h1>United States District Court<br>District of Massachusetts</h1>
+<div class="docket">23-CR-0847-FDS</div>
+<h2>DEFENDANT'S SENTENCING MEMORANDUM</h2>
+<p style="margin-top:8px">United States of America<br>v.<br><strong>Alden Wexley Clarke</strong></p>
+<p style="font-size:9.5pt;margin-top:4px">Submitted by: Harlan P. Westbrook, Esq., Counsel for Defendant</p>
+</div>
+<div class="doc-section">
+<h3>Introduction</h3>
+<p>Alden Clarke has pleaded guilty. She has accepted full responsibility for her actions. She has cooperated with investigators and expressed no desire to minimize the harm she caused. What she asks this Court to understand is not that she did not do it, but why.</p>
+</div>
+<div class="doc-section">
+<h3>Alden Clarke: A Life Spent at the Edge of Two Worlds</h3>
+<p>Alden Clarke was born in Woods Hole, Massachusetts, to a father who worked as a marine technician at WHOI and a mother who made pottery in a backyard kiln. She grew up watching the ferries cross to islands she could not afford. At fifteen, she went to work at Stony Island Club — not as a member, never as a member — serving the people she had grown up watching from the dock.</p>
+<p>She was extraordinarily intelligent. She earned a full scholarship to law school. She built a career in finance through ability alone. She married well. She moved to Beacon Hill. From the outside, she had crossed the water. But belonging is not the same as arrival.</p>
+<p>The Government is correct that this was not a crime of financial necessity. It was a crime of psychological necessity — which, this Court should know, is not a justification. It is an explanation. The two are not the same, and Alden Clarke is the first to say so.</p>
+</div>
+<div class="doc-section">
+<h3>Lila Clarke</h3>
+<p>The defendant's daughter, Lila, is eight years old. She lives with her godmother in Cambridge. She draws trees with roots that connect underground. She has not asked her mother why. She writes letters instead.</p>
+<p>The defense asks this Court to consider not whether Alden Clarke deserves mercy, but whether Lila Clarke deserves a mother. And not in the abstract — in the specific, ordinary, Tuesday-afternoon sense of a mother being present in a child's life during the years that do not come back.</p>
+<p>The defense requests a sentence of 18 months.</p>
+</div>
+<div class="sig-block">
+<div><div class="sig-line">Harlan P. Westbrook, Esq.<br>Counsel for Defendant<br>Westbrook & Farris, LLP</div></div>
+</div>
+</div>`
+  },
+
+  'ledger': {
+    title: 'forensic_accounting_ledger.xlsx — Financial Evidence',
+    html: `<div class="doc-page">
+<div class="doc-header">
+<h1>United States v. Clarke, 23-CR-0847</h1>
+<div class="docket">Forensic Accounting Analysis — Exhibit 7-A</div>
+<div style="margin:8px 0"><div class="doc-stamp">EVIDENCE</div></div>
+<h2>DAF Transfer Ledger — Seaside Preservation Trust</h2>
+<p style="font-size:9.5pt;margin-top:6px">Prepared by: Dunmore Capital Forensic Accounting Unit | Verified: FBI Financial Crimes, Boston</p>
+</div>
+<div class="doc-section">
+<h3>Summary</h3>
+<p><strong>Total Unauthorized Transfers: 47</strong></p>
+<p><strong>Total Amount: $1,723,400.00</strong></p>
+<p><strong>Period: January 2021 – October 2022</strong></p>
+<p><strong>Source Accounts: 14 dormant DAF accounts</strong></p>
+<p><strong>Recipient: Seaside Preservation Trust (EIN: <span class="doc-redact"></span>)</strong></p>
+</div>
+<div class="doc-section">
+<h3>Selected Transactions (Partial List)</h3>
+<table class="doc-table">
+<tr><th>Date</th><th>Source Account</th><th>Amount</th><th>SPT Reference</th><th>Note</th></tr>
+<tr><td>01/14/2021</td><td>DAF-0091 (Holloway)</td><td>$8,200.00</td><td>SPT-001</td><td>First transfer</td></tr>
+<tr><td>02/08/2021</td><td>DAF-0091 (Holloway)</td><td>$11,500.00</td><td>SPT-002</td><td></td></tr>
+<tr><td>03/17/2021</td><td>DAF-0144 (Pratt Est.)</td><td>$9,800.00</td><td>SPT-003</td><td></td></tr>
+<tr><td>04/22/2021</td><td>DAF-0091 (Holloway)</td><td>$14,200.00</td><td>SPT-004</td><td></td></tr>
+<tr><td>06/09/2021</td><td>DAF-0178 (Gordon)</td><td>$12,000.00</td><td>SPT-007</td><td></td></tr>
+<tr><td>08/30/2021</td><td>DAF-0091 (Holloway)</td><td>$22,500.00</td><td>SPT-009</td><td>Largest to date</td></tr>
+<tr><td>10/15/2021</td><td>Multiple</td><td>$300,000.00</td><td>SPT-BOATHOUSE</td><td style="color:#c0392b;font-weight:bold">Boathouse grant ⬅</td></tr>
+<tr><td>11/02/2021</td><td>DAF-0091 (Holloway)</td><td>$15,000.00</td><td>SPT-012</td><td></td></tr>
+<tr><td>01/18/2022</td><td>DAF-0199 (Rhodes)</td><td>$18,700.00</td><td>SPT-014</td><td></td></tr>
+<tr><td>03/04/2022</td><td>DAF-0091 (Holloway)</td><td>$8,000.00</td><td>SPT-016</td><td style="color:#555;font-style:italic">Membership approved this month</td></tr>
+<tr><td>07/20/2022</td><td>DAF-0203 (Whitfield)</td><td>$11,200.00</td><td>SPT-028</td><td></td></tr>
+<tr><td>09/14/2022</td><td>DAF-0091 (Holloway)</td><td>$14,800.00</td><td>SPT-037</td><td></td></tr>
+<tr><td>10/13/2022</td><td>DAF-0178 (Gordon)</td><td>$9,400.00</td><td>SPT-046</td><td style="color:#c0392b">Last transfer before tip</td></tr>
+<tr><td>10/14/2022</td><td>—</td><td>—</td><td>—</td><td style="color:#c0392b;font-weight:bold">Anonymous tip received ⬅</td></tr>
+</table>
+<p style="font-size:9pt;color:#555;margin-top:8px">See full 47-transaction ledger in Exhibit 7-A (complete). Note: 30% of SPT disbursements went to legitimate charitable recipients (paper trail). 70% retained or directed to club-related expenditures.</p>
+</div>
+<div class="doc-section">
+<h3>Key Observation</h3>
+<p>The Margaret H. Holloway DAF (DAF-0091) was the primary source account, contributing approximately $847,000 of the total. Mrs. Holloway died in October 2018 with no surviving heirs and an unresponsive estate executor. The account had been dormant for 26 months before the first unauthorized transfer.</p>
+<p>In her FBI interview, Clarke stated: <em>"The money was just sitting there. It wasn't going anywhere. It wasn't doing anything. I told myself it was already lost."</em></p>
+</div>
+</div>`
+  },
+
+  'voicemail': {
+    title: 'voicemail_transcript_10142022.pdf — Exhibit 14-C',
+    html: `<div class="doc-page">
+<div class="doc-header">
+<h1>United States v. Clarke, 23-CR-0847</h1>
+<div class="docket">Exhibit 14-C — Intercepted Voicemail Transcript</div>
+<div style="margin:8px 0"><div class="doc-stamp">EVIDENCE</div></div>
+</div>
+<div class="doc-section">
+<h3>Technical Information</h3>
+<table class="doc-table">
+<tr><th>Date/Time</th><td>October 14, 2022, 11:58 PM</td></tr>
+<tr><th>Caller</th><td>ALDEN WEXLEY CLARKE (confirmed via voice analysis)</td></tr>
+<tr><th>Recipient</th><td>CHARLES HENRY CLARKE (estranged husband)</td></tr>
+<tr><th>Duration</th><td>2 minutes, 14 seconds</td></tr>
+<tr><th>Intercepted By</th><td>FBI Boston — warrant 22-SW-1844</td></tr>
+<tr><th>Status</th><td>Not answered. Voicemail.</td></tr>
+</table>
+</div>
+<div class="doc-section">
+<h3>Verbatim Transcript</h3>
+<p style="background:#f9f9f9;padding:16px;border-left:3px solid #1a3a5c;font-style:italic;line-height:2">[sound of outdoor ambient noise, possibly vehicle traffic]</p>
+<p style="padding:0 16px;line-height:2">"Charles. It's me. I — I need you to know something. Not for — not for any reason, there's nothing you need to do. I just need you to know.</p>
+<p style="padding:0 16px;line-height:2">I know what this looks like. I know. But I need you to understand — I sent her to her grandmother's first. Before I made the call. I needed her out of the house. I wanted her out of the house before anything happened. She has my mother's number. She knows where the spare key is.</p>
+<p style="padding:0 16px;line-height:2">There's — there's a folder on the kitchen table. Blue folder. There are some letters in there. One of them is for Lila. The others are — you'll understand what they are.</p>
+<p style="padding:0 16px;line-height:2">I'm not — I'm not going anywhere. I just needed the house to be clean before — I needed things to be in the right order.</p>
+<p style="padding:0 16px;line-height:2">Tell her I'm sorry. Tell her — [pause, approximately 11 seconds] — tell her the pancakes weren't her fault.</p>
+<p style="padding:0 16px;line-height:2">That's all. That's — that's all I needed to say."</p>
+<p style="background:#f9f9f9;padding:16px;border-left:3px solid #1a3a5c;font-style:italic">[call ends]</p>
+</div>
+<div class="doc-section">
+<h3>Agent Note — T. Harrison</h3>
+<p style="background:#fff8dc;border:1px solid #f0c040;padding:10px;font-style:italic">She sent the child away before she made the call. She knew.</p>
+<p>This voicemail was the triggering event for the accelerated execution of the search warrant. Originally scheduled for July 29 — moved to July 28 at 6:04 AM following review of this recording.</p>
+<p>For context: the "call" referenced is believed to be Clarke's call to the FBI tip line. An anonymous tip was received at 12:04 AM, October 15, 2022, approximately 6 minutes after this voicemail was left.</p>
+<p>Clarke tipped herself. The voicemail was her goodbye to her daughter — sent through her estranged husband because she did not have the daughter's number memorized and did not want to call her grandmother's house at midnight. — T.H.</p>
+</div>
+</div>`
+  },
+
+  'globe-article': {
+    title: 'BostonGlobe_arrest_article.pdf',
+    html: `<div class="doc-page">
+<div class="doc-header">
+<h1 style="font-family:'Georgia',serif;font-size:28pt;letter-spacing:-1px;font-weight:normal">The Boston Globe</h1>
+<div style="border-top:2px solid #000;border-bottom:1px solid #000;padding:4px 0;margin:8px 0;font-size:9pt;text-align:center;letter-spacing:1px">METRO — JULY 28, 2023</div>
+<h2 style="font-family:Georgia,serif;font-size:16pt;font-weight:normal;line-height:1.3">Beacon Hill Attorney Arrested in $1.7M Charity Fraud Scheme; Allegedly Funded Fake Nonprofit to Gain Access to Exclusive Club</h2>
+<p style="font-size:9.5pt;color:#555;margin-top:6px">By Staff Reporter | Boston Globe</p>
+</div>
+<div class="doc-section">
+<p>Federal agents arrested a Beacon Hill attorney early Friday morning in connection with a $1.7 million wire fraud and money laundering scheme, according to federal prosecutors.</p>
+<p>Alden Clarke, 41, of 14 Acorn Street, was taken into custody at approximately 6:04 AM without incident. She is charged with wire fraud and money laundering in connection with her alleged operation of a fraudulent nonprofit, the Seaside Preservation Trust, which prosecutors say was used to funnel misappropriated charitable funds into a bid for membership at the Stony Island Club, a private social club on a small island off Martha's Vineyard.</p>
+<p>The Stony Island Club, founded in 1891, is widely considered among the most exclusive private membership organizations in New England. The club does not publicize its membership list and declined to comment for this story.</p>
+<p>According to the indictment, Clarke allegedly identified dormant donor-advised fund accounts at her employer, Dunmore Capital Management, and caused $1.7 million in unauthorized transfers over a 26-month period to the shell nonprofit she had created. She then used the nonprofit to make a $300,000 anonymous donation to the club's boathouse restoration project — a gift that allegedly secured her membership application.</p>
+<p>"This was not a crime of necessity," said Julia Kowalski, the Assistant United States Attorney handling the case. "The defendant had every advantage. She chose to steal from accounts belonging to people who could not protect themselves."</p>
+<p>Clarke's attorney, Harlan Westbrook, declined to comment beyond confirming that his client would be entering a guilty plea.</p>
+<p>A neighbor on Acorn Street, speaking on condition of anonymity, described Clarke as quiet and private. "She had a daughter. Lovely child," the neighbor said. "We never knew much about what she did. She kept to herself."</p>
+<p>Sentencing is scheduled for July 28, 2023.</p>
+</div>
+</div>`
+  },
+
+  'dear-lila': {
+    title: 'dear_lila_draft.txt — [RECOVERED FROM RECYCLE BIN]',
+    html: `<div class="doc-page">
+<div class="doc-header">
+<div class="doc-stamp">RECOVERED — FORENSIC</div>
+<h2>dear_lila_draft.txt</h2>
+<p style="font-size:9.5pt;color:#555">Deleted: October 14, 2022, 11:47 PM | Recovered by FBI forensics</p>
+</div>
+<div class="doc-section">
+<p style="font-family:'Courier New',monospace;font-size:10pt;line-height:2;white-space:pre-wrap">Dear Lila,
+
+I want to explain some things to you. I'm not sure I'll send this. I don't know if I should. But I want it to exist somewhere, in case you want it someday.
+
+I grew up in a place where the ferry went to the island but we weren't the kind of people who were on it. Do you understand what I mean? We watched it leave. That was our relationship to it. We watched.
+
+I wanted to be on it. I wanted it very badly. And I spent a very long time trying to get there, and I did some things to get there that I am not proud of.
+
+What I want you to know is: you were never part of it. You were never the reason. I did not do this for you or for us or for our family. I did it for something I thought I needed, something I had wanted since I was fifteen years old, and by the time I got it I had already figured out that it was the wrong thing but I couldn't stop.
+
+I want you to know something else: the mornings when we made pancakes and the batter went everywhere and you sat on the counter because you thought the stool was too boring — those were the real things. The things I am keeping. The things nobody can take.
+
+I'm sorry I am not a simpler person. I'm sorry I didn't know sooner.
+
+I love you in a way that doesn't have anything to do with wanting things.
+
+—</p>
+<p style="font-size:9pt;color:#888;font-style:italic;margin-top:20px">[Document ends. File was deleted 11:47 PM October 14, 2022. Anonymous tip to FBI received 12:04 AM October 15, 2022.]</p>
+</div>
+</div>`
+  },
+
+  'search-history': {
+    title: 'search_history_export.txt — [RECOVERED FROM RECYCLE BIN]',
+    html: `<div class="doc-page">
+<div class="doc-header">
+<div class="doc-stamp">RECOVERED — FORENSIC</div>
+<h2>search_history_export.txt</h2>
+<p style="font-size:9.5pt;color:#555">Browser search history export — August 2022 – October 2022 | Recovered by FBI forensics</p>
+</div>
+<div class="doc-section">
+<table class="doc-table">
+<tr><th>Date</th><th>Query</th><th>Engine</th></tr>
+<tr><td>08/04/2022</td><td>how long federal investigation white collar fraud</td><td>Google</td></tr>
+<tr><td>08/04/2022</td><td>donor advised fund oversight regulations 2022</td><td>Google</td></tr>
+<tr><td>08/11/2022</td><td>dormant DAF account no heir statute limitations</td><td>Google</td></tr>
+<tr><td>08/22/2022</td><td>Marion's Catch Menemsha hours</td><td>Google</td></tr>
+<tr><td>08/22/2022</td><td>Menemsha parking ferry vineyard haven</td><td>Google</td></tr>
+<tr><td>09/01/2022</td><td>nonprofit 990 audit trigger threshold</td><td>Google</td></tr>
+<tr><td>09/03/2022</td><td>federal wire fraud elements proof</td><td>Google</td></tr>
+<tr><td>09/14/2022</td><td>Stony Island Club membership revocation rules</td><td>Google</td></tr>
+<tr><td>09/19/2022</td><td>what happens if you turn yourself in federal crime</td><td>Google</td></tr>
+<tr><td>09/19/2022</td><td>cooperation credit federal sentencing guidelines</td><td>Google</td></tr>
+<tr><td>10/01/2022</td><td>federal prison camp women Massachusetts</td><td>Google</td></tr>
+<tr><td>10/01/2022</td><td>how long can child visit federal prison</td><td>Google</td></tr>
+<tr><td>10/08/2022</td><td>Michael Marion Menemsha restaurant</td><td>Google</td></tr>
+<tr><td>10/12/2022</td><td>FBI tip line anonymous D Massachusetts</td><td>Google</td></tr>
+<tr><td>10/13/2022</td><td>dear lila how do you</td><td>Google</td></tr>
+<tr><td>10/14/2022</td><td>[search deleted]</td><td>—</td></tr>
+</table>
+<p style="font-size:9pt;color:#555;font-style:italic;margin-top:12px">Note: The October 8 search for "Michael Marion Menemsha restaurant" occurs 8 days before the anonymous tip. The October 13 partial query suggests an abandoned attempt to draft a letter. — Agent Harrison</p>
+</div>
+</div>`
+  },
+
+  'pwd-hint': {
+    title: 'password_hint.txt — [RECOVERED FROM RECYCLE BIN]',
+    html: `<div class="doc-page">
+<div class="doc-header">
+<div class="doc-stamp">RECOVERED — FORENSIC</div>
+<h2>password_hint.txt</h2>
+<p style="font-size:9.5pt;color:#555">Deleted: October 1, 2022</p>
+</div>
+<div class="doc-section">
+<p style="font-family:'Courier New',monospace;font-size:18pt;text-align:center;margin:40px 0;letter-spacing:4px">you know</p>
+<p style="font-size:9pt;color:#888;text-align:center;font-style:italic">Harrison's note: Believed to be hint for encrypted working file. See: harrison_working_file.enc</p>
+</div>
+</div>`
+  },
+
+  'harrison-notes': {
+    title: 'harrison_notes_FINAL.docx — Agent T. Harrison',
+    html: `<div class="doc-page">
+<div class="doc-header">
+<div class="doc-stamp">AGENT WORKING NOTES — NOT FOR DISCLOSURE</div>
+<h2>Harrison Working Notes — USA v. Clarke</h2>
+<p style="font-size:9pt;color:#555">Agent T. Harrison, FBI Boston | Not a formal report | Personal investigative record</p>
+</div>
+<div class="doc-section">
+<h3>Why She Did It (My Theory — Not For the Record)</h3>
+<p>I've done 11 years of white collar. I've prosecuted hedge fund managers and mortgage brokers and one very memorable city councilman who took $2.2M to approve a parking garage. I know what greed looks like. I know what fear looks like. I know what pure entitled contempt for the law looks like.</p>
+<p>This is none of those things.</p>
+<p>She grew up watching ferries go to places she couldn't go. This is not metaphor — this is literally what happened. Her father worked the docks. Her mother made pottery. She was 15 years old and she was serving cocktails to people her own age who'd been going to that island every summer of their lives, people who didn't think about it, who thought the whole world was that island and the ferry schedule and whose turn it was to use the Sunfish.</p>
+<p>She spent 25 years building something that looked like the inside of a life she'd always wanted. She got in. And I think she drove that ferry back to Menemsha in July 2022 because she needed to look at someone who had known her before any of it, someone who had never cared about any of it, and she needed to see if that person still existed.</p>
+<p>He does, for what it's worth. He's still there. He opens at noon and closes when the fish runs out.</p>
+<p>None of this is relevant to the case. I'm writing it down because I've been up since 2 AM and I keep reading that letter she wrote her daughter and I need to put it somewhere else so I can do my job tomorrow.</p>
+</div>
+<div class="doc-section">
+<h3>The Letter</h3>
+<p>She wrote the letter to Lila on the same night she called the tip line. She deleted it. She wrote a shorter one — the one in the blue folder on the kitchen table. The shorter one doesn't explain anything. It just says: the pancakes weren't your fault, and I love you, and I'll write you when I get to where I'm going.</p>
+<p>The pancakes. I'd give a lot to know what that's about.</p>
+<p>— T.H. | 4:30 AM | July 28, 2023</p>
+</div>
+</div>`
+  },
+
+  'denial-chain': {
+    title: 'membership_denial_chain.pdf — Correspondence',
+    html: `<div class="doc-page">
+<div class="doc-header">
+<div class="doc-stamp">EVIDENCE — EXHIBIT 3-B</div>
+<h2>Membership Correspondence — Stony Island Club</h2>
+<p style="font-size:9pt;color:#555">Email chain recovered from Clarke's personal email account | 2020–2022</p>
+</div>
+<div class="doc-section">
+<h3>Email 1 of 5</h3>
+<p style="font-family:'Courier New',monospace;font-size:9.5pt">
+FROM: membership@stonyislandclub.com<br>
+TO: a.clarke@personal.com<br>
+DATE: March 14, 2020<br>
+SUBJECT: Re: Application Inquiry
+</p>
+<p style="font-style:italic;margin:12px 0;padding:12px;background:#f9f9f9;border-left:3px solid #ccc">Dear Ms. Clarke,<br><br>Thank you for your inquiry regarding membership. We do not accept unsolicited applications. Membership requires sponsorship by two current members of no fewer than ten years' standing. We suggest you reach out to members of your acquaintance.<br><br>Warmly,<br>Membership Committee<br>Stony Island Club</p>
+</div>
+<div class="doc-section">
+<h3>Email 3 of 5 — [18 months later]</h3>
+<p style="font-family:'Courier New',monospace;font-size:9.5pt">
+FROM: a.shaw@stonyislandclub.com [Arabella Shaw, Membership Chair]<br>
+TO: membership@stonyislandclub.com<br>
+DATE: September 4, 2021<br>
+SUBJECT: Re: Clarke application — observation<br>
+<span style="color:#888">CC: [REDACTED]</span>
+</p>
+<p style="font-style:italic;margin:12px 0;padding:12px;background:#f9f9f9;border-left:3px solid #ccc">She moves like she grew up here. But she didn't.<br><br>Worth noting.<br>— A.S.</p>
+</div>
+<div class="doc-section">
+<h3>Email 5 of 5 — [6 months after boathouse donation]</h3>
+<p style="font-family:'Courier New',monospace;font-size:9.5pt">
+FROM: membership@stonyislandclub.com<br>
+TO: a.clarke@personal.com<br>
+DATE: March 3, 2022<br>
+SUBJECT: Membership — Welcome
+</p>
+<p style="font-style:italic;margin:12px 0;padding:12px;background:#f9f9f9;border-left:3px solid #ccc">Dear Ms. Clarke,<br><br>It is our pleasure to welcome you as a member of the Stony Island Club.<br><br>Your membership number is enclosed. The summer season opens May 15. Ferry schedule attached.<br><br>We look forward to seeing you.<br><br>Arabella Shaw<br>Membership Committee</p>
+<p style="font-size:9pt;color:#888;margin-top:16px;font-style:italic">Harrison's note: SPT incorporation date: November 4, 2020. Boathouse donation: October 15, 2021. Membership approval: March 3, 2022. The anonymous donation and approval are separated by approximately 135 days.</p>
+</div>
+</div>`
+  },
+
+  'membership-draft': {
+    title: 'membership_application_DRAFT.docx — [RECOVERED FROM RECYCLE BIN]',
+    html: `<div class="doc-page">
+<div class="doc-header">
+<div class="doc-stamp">RECOVERED — FORENSIC</div>
+<h2>membership_application_DRAFT.docx</h2>
+<p style="font-size:9.5pt;color:#555">Draft membership application — multiple versions recovered | October 11, 2022</p>
+</div>
+<div class="doc-section">
+<p style="font-size:9pt;color:#888;font-style:italic;margin-bottom:16px">Note: This is a draft recovered 13 days after membership was granted, suggesting it was kept as a record or revised for unknown reasons.</p>
+<p><strong>Name:</strong> Alden Wexley Clarke</p>
+<p><strong>Residential address:</strong> 14 Acorn Street, Boston, MA 02108</p>
+<p><strong>Proposed by:</strong> [redacted by applicant]</p>
+<p><strong>Seconded by:</strong> [redacted by applicant]</p>
+<p><strong>Summer contact:</strong> Vineyard Haven, MA</p>
+<p><strong>Please describe your connection to Stony Island:</strong></p>
+<p style="font-style:italic;background:#f9f9f9;padding:12px;border-left:3px solid #ccc;margin:8px 0">Draft 1: "I have admired the club and its values since childhood."<br><span style="color:#c0392b">[STRIKETHROUGH]</span></p>
+<p style="font-style:italic;background:#f9f9f9;padding:12px;border-left:3px solid #ccc;margin:8px 0">Draft 2: "I first came to know the island in the summer of 1998, when I had the privilege of working in the dining room. The club's commitment to preservation and community has remained with me ever since."<br><span style="color:#c0392b">[STRIKETHROUGH — note: "too much — shows working class background — revise"]</span></p>
+<p style="font-style:italic;background:#f9f9f9;padding:12px;border-left:3px solid #ccc;margin:8px 0">Draft 3: "I have been connected to the island community for many years through my work in philanthropic strategy and my support of the Seaside Preservation Trust."<br><span style="color:#555">[FINAL]</span></p>
+<p style="font-size:9pt;color:#888;font-style:italic;margin-top:20px">Harrison's note: Draft 2 was the true answer. She crossed it out because it told the truth.</p>
+</div>
+</div>`
+  }
+};
+
+// ===== BLINK ANIMATION =====
+const style = document.createElement('style');
+style.textContent = `@keyframes blink { 0%,49%{opacity:1}50%,100%{opacity:0} }`;
+document.head.appendChild(style);
+
+// Click desktop to close windows / context menu
+document.getElementById('desktop').addEventListener('click', e => {
+  document.getElementById('context-menu').style.display='none';
+});
+
+// Window click to bring to front
+document.querySelectorAll('.window').forEach(win => {
+  win.addEventListener('mousedown', () => bringToFront(win.id));
+});
+</script>
+</html>
